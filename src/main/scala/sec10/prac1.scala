@@ -117,11 +117,10 @@ class LabeledPoint(val label: String, x: Int, y: Int) extends Point(x, y) with P
 import java.io.File
 import java.io.FileInputStream
 import java.io.InputStream
-trait BufferedInputStream {
+trait BufferedInputStream extends Logged {
     this: InputStream =>
     /*
     abstract override def read(): Int = {
-        println("read res read...")
         val res = super.read()      // because super.read is abstract, so this override 
                                     // should be abstract
         println("after read...")
@@ -136,22 +135,73 @@ trait BufferedInputStream {
     // if byarray is not empty and index is not end, return the next byte
     // else read buffer from input stream, reset index
     // return -1 if reach EOF
-    /*
-    def read(): Int = {
-        val res: Int = -1
-        if (byarray.isEmpty || index ) {
+    override def read(): Int = {
+        var res: Int = -1
+        if (!byarray.isEmpty) {
+            if (index >= length) {
+                index = 0
+                length = read(byarray)
+                log("read more to buffer..." + length)
+                if (length == -1) {
+                    res = -1
+                } else {
+                    res = byarray(index)
+                    index += 1
+                }
+            } else {
+                res = byarray(index)
+                index += 1
+            }
+        } else {
             length = read(byarray)
-            if (length != -1) {
+            log("first read to buffer..." + length)
+            if (length == -1) {
+                res = -1
+            } else {
+                res = byarray(index)
+                index += 1
             }
         }
         res
     }
-    */
 }
 
 // 9.
+trait Logged {
+    def log(msg: String): Unit
+}
+
+trait ConsoleLogger extends Logged {
+    override def log(msg: String) { println(msg) }
+}
+
+trait TimestampLogger extends Logged {
+    override abstract def log(msg: String) {
+        super.log(new java.util.Date() + " " + msg)
+    }
+}
+
+trait ShortLogger extends Logged {
+    val maxLength = 15
+    override abstract def log(msg: String) {
+        super.log (
+            if (msg.length <= maxLength) msg else msg.substring(0, maxLength - 3) + "..."
+        )
+    }
+}
 
 // 10.
+trait IterableInputStream extends Iterable[Byte] {
+    this: InputStream =>
+
+    override def iterator: Iterator[Byte] = {
+        val a: Iterator[Byte] = new Iterator[Byte] {
+            override def hasNext: Boolean = { true }
+            override def next: Byte = { 0 }
+        }
+        a
+    }
+}
 
 object PracTest extends App {
     println ("sec10.PracTest")
@@ -227,8 +277,8 @@ object PracTest extends App {
     println("------------------------------  practice 7 -------------------------");
 
     // 8.
-    println("------------------------------  practice 8 -------------------------");
-    val is = new FileInputStream(new File("./s/sec9/prac1.scala")) with BufferedInputStream
+    println("------------------------------  practice 8, and 9 -------------------------");
+    val is = new FileInputStream(new File("./s/sec9/prac1.scala")) with BufferedInputStream with ConsoleLogger with TimestampLogger with ShortLogger
     val i1 = is.read()
     val i2 = is.read()
     println (i1.toChar)
@@ -237,6 +287,12 @@ object PracTest extends App {
 
     // 9.
     println("------------------------------  practice 9 -------------------------");
+    val is2 = new FileInputStream(new File("./s/sec9/prac1.scala")) with BufferedInputStream with ConsoleLogger with ShortLogger with TimestampLogger
+    val i3 = is2.read()
+    val i4 = is2.read()
+    println (i1.toChar)
+    println (i2.toChar)
+    is2.close()
 
     // 10.
     println("------------------------------  practice 10 -------------------------");
