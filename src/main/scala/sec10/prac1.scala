@@ -112,6 +112,18 @@ class LabeledPoint(val label: String, x: Int, y: Int) extends Point(x, y) with P
 // 6.
 
 // 7.
+trait HtmlStyle {
+    //def append(): Node
+}
+
+trait PlainTextStyle extends HtmlStyle {
+}
+
+trait CenterStyle extends HtmlStyle {
+}
+
+trait BoldStyle extends HtmlStyle {
+}
 
 // 8.
 import java.io.File
@@ -191,13 +203,18 @@ trait ShortLogger extends Logged {
 }
 
 // 10.
-trait IterableInputStream extends Iterable[Byte] {
-    this: InputStream =>
+import scala.collection.Iterable
+import scala.collection.Iterator
+trait IterableInputStream extends InputStream with Iterable[Byte] with Logged {
 
+    var theNext: Byte = -1
     override def iterator: Iterator[Byte] = {
         val a: Iterator[Byte] = new Iterator[Byte] {
-            override def hasNext: Boolean = { true }
-            override def next: Byte = { 0 }
+            override def hasNext: Boolean = {
+                theNext = read().toByte
+                if (theNext == -1) false else true
+            }
+            override def next: Byte = { log(theNext.toChar.toString); theNext }
         }
         a
     }
@@ -296,4 +313,13 @@ object PracTest extends App {
 
     // 10.
     println("------------------------------  practice 10 -------------------------");
+    val is3 = new FileInputStream(new File("./s/sec9/prac1.scala")) with IterableInputStream with ConsoleLogger with TimestampLogger with ShortLogger {
+        override def log(msg: String) { print(msg) }    // will override all of the logger trait
+    }
+    val iter: Iterator[Byte] = is3.iterator
+    while (iter.hasNext) {
+        iter.next
+    }
+    is3.close
+    println()
 }
