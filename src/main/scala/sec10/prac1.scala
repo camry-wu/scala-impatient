@@ -112,17 +112,37 @@ class LabeledPoint(val label: String, x: Int, y: Int) extends Point(x, y) with P
 // 6.
 
 // 7.
+import scala.xml._
 trait HtmlStyle {
-    //def append(): Node
+    def wrap(): NodeSeq
 }
 
 trait PlainTextStyle extends HtmlStyle {
+    this: {def toString(): String} =>
+    override def wrap(): NodeSeq = {
+        val items = new NodeBuffer
+        items += <text>{toString}</text>
+        val nodes: NodeSeq = items
+        nodes
+    }
 }
 
 trait CenterStyle extends HtmlStyle {
+    override abstract def wrap(): NodeSeq = {
+        val items = new NodeBuffer
+        items += <center>{super.wrap()}</center>
+        val nodes: NodeSeq = items
+        nodes
+    }
 }
 
 trait BoldStyle extends HtmlStyle {
+    override abstract def wrap(): NodeSeq = {
+        val items = new NodeBuffer
+        items += <bold>{super.wrap()}</bold>
+        val nodes: NodeSeq = items
+        nodes
+    }
 }
 
 // 8.
@@ -292,6 +312,10 @@ object PracTest extends App {
 
     // 7.
     println("------------------------------  practice 7 -------------------------");
+    val xmlnode = new Text("Danny") with PlainTextStyle with CenterStyle with BoldStyle
+    println(xmlnode.wrap())     // bold center text
+    val xmlnode2 = new Text("Danny") with PlainTextStyle with BoldStyle with CenterStyle
+    println(xmlnode2.wrap())    // center bold text
 
     // 8.
     println("------------------------------  practice 8, and 9 -------------------------");
