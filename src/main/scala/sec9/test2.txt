@@ -1,0 +1,9 @@
+pri             level
+emergency       5
+alert           4
+critical        4
+error           3
+warning         2
+notice          2
+information     1
+debug           1
