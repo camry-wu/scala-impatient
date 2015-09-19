@@ -59,6 +59,29 @@ object VerifiesAllHostNames extends HostnameVerifier {
 // 9.
 
 // 10.
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
+import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.StringBuilder
+@SerialVersionUID(42L) class Person(val name: String) extends Serializable {
+    private val friends = new ArrayBuffer[Person]
+    def addFriend(fred: Person): Person = {
+        friends += fred
+        this
+    }
+    def myfriends : ArrayBuffer[Person] = {
+        friends
+    }
+    override def toString() = {
+        val sb = new StringBuilder
+        for (f <- friends) {
+            sb ++= f.name ++= ", "
+        }
+        "%s has some friends: %s".format(name, sb.toString)
+    }
+}
 
 object PracTest extends App {
     println ("sec9.PracTest")
@@ -164,12 +187,21 @@ object PracTest extends App {
         HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory)
         HttpsURLConnection.setDefaultHostnameVerifier(VerifiesAllHostNames)
 
-        val numberPattern = """(?i:\d+\.\d+)|(\d+)""".r
+        val scriptPattern = """<[sS][cC][rR][iI][pP][tT][^>]*?[sS][rR][cC]=((["'])([^"']*?)(["']))[^>]*?>""".r
         val source = Source.fromURL(url)
-        source.mkString
+        val lineIterator = source.getLines
+        val sb = new StringBuilder
+        for (l <- lineIterator) {
+            sb ++= l += '\n'
+        }
+
+        for (scriptPattern(all, fuhao, src, fuhao2) <- scriptPattern.findAllIn(sb.toString)) {
+            println(src)
+        }
+        
         source.close
     }
-    prac8("https://192.168.1.101/semanto/")
+    prac8("http://www.baidu.com")
 
     // 9.
     println("------------------------------  practice 9 -------------------------");
@@ -188,4 +220,33 @@ object PracTest extends App {
 
     // 10.
     println("------------------------------  practice 10 -------------------------");
+    def writePerson(person: Person, outfile: String) {
+        val out = new ObjectOutputStream(new FileOutputStream(outfile))
+        out.writeObject(person)
+        out.close()
+    }
+    def readPerson(infile: String): Person = {
+        val in = new ObjectInputStream(new FileInputStream(infile))
+        val saveFred = in.readObject().asInstanceOf[Person]
+        in.close()
+        saveFred
+    }
+
+    val me = new Person("camry")
+    val fred1 = new Person("xiaomizhou")
+    val fred2 = new Person("xiaoqiang")
+    val fred3 = new Person("xiaopang")
+    val fred4 = new Person("ali")
+    val fred5 = new Person("shifeng")
+    fred1.addFriend(fred2)
+    fred2.addFriend(fred3)
+    fred3.addFriend(fred4)
+    fred4.addFriend(fred5)
+
+    me.addFriend(fred1).addFriend(fred2).addFriend(fred3).addFriend(fred4).addFriend(fred5)
+    println(me)
+    writePerson(me, "s/sec9/test10.obj")
+
+    val me2 = readPerson("s/sec9/test10.obj")
+    println(me2)
 }
