@@ -158,7 +158,8 @@ object PracTest extends App {
     println("------------------------------  practice 6 -------------------------");
     def prac6(filename: String) {
         val source = Source.fromFile(filename)
-        val strPattern = """("([^"]*(?:\\")+[^"]*)")""".r
+        //val strPattern = """("[^"]*")""".r                        // this cannot parse excaped quotes!
+        val strPattern = """("(?:\\.|[^"\\])*")""".r                // this is corrct!
         strPattern.findAllIn(source.mkString).foreach(println(_))
         source.close
     }
