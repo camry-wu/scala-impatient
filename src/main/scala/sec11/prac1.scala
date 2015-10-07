@@ -206,6 +206,30 @@ class ASCIIArt {
 }
 
 // 7.
+class BigSequence(var bitseq: Long) {
+    def apply(idx: Int): Int = {
+        assert(idx >= 0 && idx <= 63)
+
+        val mask: Long = 1L << idx
+        if ((mask & bitseq) == 0) 0 else 1
+    }
+
+    // println(((1L << 23) ^ -1).toBinaryString)
+    def update(idx: Int, value: Int): Unit = {
+        assert(idx >= 0 && idx <= 63)
+        assert(value == 0 || value == 1)
+
+        if (value == 1) {
+            val mask: Long = 1L << idx
+            bitseq = bitseq | mask
+        } else {
+            val mask: Long = (1L << idx) ^ -1L
+            bitseq = bitseq & mask
+        }
+    }
+
+    override def toString = bitseq.toBinaryString
+}
 
 // 8.
 
@@ -290,6 +314,16 @@ object PracTest extends App {
 
     // 7.
     println("------------------------------  practice 7 -------------------------");
+    val bigseq1 = new BigSequence(-1)   // 1111...111
+    val bigseq2 = new BigSequence(0)    // 0000...000
+
+    bigseq1(0) = 0
+    bigseq1(63) = 0
+    bigseq2(0) = 1
+    bigseq2(63) = 1
+
+    println(bigseq1)
+    println(bigseq2)
 
     // 8.
     println("------------------------------  practice 8 -------------------------");
