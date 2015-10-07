@@ -232,6 +232,70 @@ class BigSequence(var bitseq: Long) {
 }
 
 // 8.
+class Matrix(val value: Array[Array[Int]]) {
+    override def toString = {
+        val sb = new StringBuilder
+
+        for (row <- value) {
+            for (col <- row) {
+                sb.append(col)
+                sb.append(", ")
+            }
+            sb.append("\n")
+        }
+        sb.toString
+    }
+
+    def apply(row: Int, col: Int): Int = {
+        value(row)(col)
+    }
+
+    def +(other: Matrix): Matrix = {
+        val new_value = new ArrayBuffer[Array[Int]]
+        for (i <- 0 to value.length - 1) {
+            val left = value(i)
+            val right = other.value(i)
+            val row = for (x <- left.zip(right)) yield (x._1 + x._2)
+
+            new_value += row
+        }
+        new Matrix(new_value.toArray)
+    }
+
+    // [ 1 1 ] * [0 2 3] = [1 3 5]
+    // [ 2 0 ]   [1 1 2]   [0 4 6]
+    // matrix1.col == matrix2.row
+    def *(other: Matrix): Matrix = {
+        val right_col_length = other.value(0).length
+        val new_value = new ArrayBuffer[Array[Int]]
+
+        for (i <- 0 to value.length - 1) {
+            val left_row = value(i)
+
+            val new_row = new ArrayBuffer[Int]
+            for (j <- 0 to right_col_length - 1) {
+                var sum = 0
+                for (k <- 0 to left_row.length - 1) {
+                    sum += left_row(k) * other.value(k)(j)
+                }
+                new_row += sum
+            }
+
+            new_value += new_row.toArray
+        }
+
+        new Matrix(new_value.toArray)
+    }
+
+    def *(fac: Int): Matrix = {
+        val new_value = new ArrayBuffer[Array[Int]]
+        for (arr <- value) {
+            val row = arr.map(_ * fac)
+            new_value += row
+        }
+        new Matrix(new_value.toArray)
+    }
+}
 
 // 9.
 import java.io.File
@@ -389,4 +453,22 @@ object PracTest extends App {
         case _ => println("nothing matched.")
     }
     */
+
+    val matv = Array(Array(2, 3), Array(3, 5), Array(7, 9))
+    val mat = new Matrix(matv)
+    println(mat)
+
+    println(mat * 2)
+
+    val matv2 = Array(Array(6, 4), Array(1, -3), Array(8, 2))
+    val mat2 = new Matrix(matv2)
+    println(mat2)
+
+    println(mat + mat2)
+
+    val matv3 = Array(Array(1, 2, 3), Array(4, 5, 6))
+    val mat3 = new Matrix(matv3)
+    println(mat3)
+
+    println(mat * mat3)
 }
