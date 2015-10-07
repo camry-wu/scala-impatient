@@ -234,8 +234,43 @@ class BigSequence(var bitseq: Long) {
 // 8.
 
 // 9.
+import java.io.File
+object RichFile {
+    def unapply(input: File) = {
+        val path = input.getParent
+        val name = input.getName
+
+        if (path == null && name == null) None
+        else {
+            val idx = name.lastIndexOf('.')
+            val filename = if (idx != -1) name.substring(0, idx) else name
+            val extname = if (idx != -1) name.substring(idx + 1) else null
+
+            Some(path, filename, extname)
+        }
+    }
+}
+
+object RichFile2 {
+    def unapplySeq(input: File): Option[Seq[String]] = {
+        var path = input.getPath
+        if (path == null || path.trim == "") None
+        else {
+            path = path.trim
+            path = if(path.startsWith("/")) path.substring(1) else path
+
+            if (path == "") None
+            else Some(path.split("/"))
+        }
+    }
+}
 
 // 10.
+object Name {
+    def unapplySeq(input: String): Option[Seq[String]] = {
+        if (input.trim == "") None else Some(input.trim.split("\\s+"))
+    }
+}
 
 object PracTest extends App {
     println ("sec11.PracTest")
@@ -330,7 +365,28 @@ object PracTest extends App {
 
     // 9.
     println("------------------------------  practice 9 -------------------------");
+    val file = new File("/home/cay/danny/readme.txt")
+    val RichFile(p, n, e) = file
+    println(p)
+    println(n)
+    println(e)
 
     // 10.
     println("------------------------------  practice 10 -------------------------");
+    file match {
+        case RichFile2(a,b,c,d) => println(s"$a, $b, $c, $d")
+        case RichFile2(a,b,c,d,e) => println(s"$a, $b, $c, $d, $e")
+        case _ => println("nothing matched.")
+    }
+
+    /*
+    val auth = "a b c d"
+    auth match {
+        case Name(a) => println(s"$a")
+        case Name(a, b) => println(s"$a, $b")
+        case Name(a, b, c) => println(s"$a, $b, $c")
+        case Name(a, b, c, d) => println(s"$a, $b, $c, $d")
+        case _ => println("nothing matched.")
+    }
+    */
 }
