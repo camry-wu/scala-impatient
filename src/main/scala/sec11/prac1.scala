@@ -153,7 +153,56 @@ object Table {
 }
 
 // 6.
+import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.StringBuilder
 class ASCIIArt {
+    val img = new ArrayBuffer[String]
+
+    def += (line: String): this.type = {
+        img += line
+        this
+    }
+
+    def ++= (lines: ArrayBuffer[String]): this.type = {
+        for (line <- lines) {
+            img += line
+        }
+        this
+    }
+
+    override def toString = {
+        val sb = new StringBuilder 
+        for (elem <- img) {
+            sb ++= elem
+            sb += '\n'
+        }
+        sb.toString
+    }
+
+    def |+ (other: ASCIIArt): ASCIIArt = {
+        val result = new ASCIIArt
+        result ++= img
+        result ++= other.img
+        result
+    }
+
+    def -+ (other: ASCIIArt): ASCIIArt = {
+        val maxline = scala.math.max(img.length, other.img.length)
+        val maxval = img.map(_.length).max
+        val blank = (for (i <- 1 to maxval) yield ' ').mkString
+
+        val result = new ASCIIArt
+        for (i <- 0 to maxline - 1) {
+            val left_idx = (img.length - maxline) / 2 + i
+            val left = if (left_idx < 0 || left_idx >= img.length) blank else img(left_idx)
+
+            val right_idx = (other.img.length - maxline) / 2 + i
+            val right = if (right_idx < 0 || right_idx >= other.img.length) "" else other.img(right_idx)
+            
+            result += (left + " " + right)
+        }
+        result
+    }
 }
 
 // 7.
@@ -220,6 +269,24 @@ object PracTest extends App {
 
     // 6.
     println("------------------------------  practice 6 -------------------------");
+    val art1 = new ASCIIArt
+    art1 += " /\\_/\\"
+    art1 += "( ' ' )"
+    art1 += "(  -  )"
+    art1 += " | | | "
+    art1 += "(__|__)"
+
+    val art2 = new ASCIIArt
+    art2 += "     @  "
+    art2 += "   -----"
+    art2 += " / Hello \\"
+    art2 += "<  Scala |"
+    art2 += " \\ Coder /"
+    art2 += "   -----"
+    art2 += "     @  "
+
+    println(art1 |+ art2)
+    println(art1 -+ art2)
 
     // 7.
     println("------------------------------  practice 7 -------------------------");
