@@ -426,6 +426,23 @@ object PracTest extends App {
 
     // 8.
     println("------------------------------  practice 8 -------------------------");
+    val matv = Array(Array(2, 3), Array(3, 5), Array(7, 9))
+    val mat = new Matrix(matv)
+    println(mat)
+
+    println(mat * 2)
+
+    val matv2 = Array(Array(6, 4), Array(1, -3), Array(8, 2))
+    val mat2 = new Matrix(matv2)
+    println(mat2)
+
+    println(mat + mat2)
+
+    val matv3 = Array(Array(1, 2, 3), Array(4, 5, 6))
+    val mat3 = new Matrix(matv3)
+    println(mat3)
+
+    println(mat * mat3)
 
     // 9.
     println("------------------------------  practice 9 -------------------------");
@@ -453,22 +470,4 @@ object PracTest extends App {
         case _ => println("nothing matched.")
     }
     */
-
-    val matv = Array(Array(2, 3), Array(3, 5), Array(7, 9))
-    val mat = new Matrix(matv)
-    println(mat)
-
-    println(mat * 2)
-
-    val matv2 = Array(Array(6, 4), Array(1, -3), Array(8, 2))
-    val mat2 = new Matrix(matv2)
-    println(mat2)
-
-    println(mat + mat2)
-
-    val matv3 = Array(Array(1, 2, 3), Array(4, 5, 6))
-    val mat3 = new Matrix(matv3)
-    println(mat3)
-
-    println(mat * mat3)
 }
