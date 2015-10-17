@@ -19,6 +19,12 @@ import scala.math._
 // 8.
 
 // 9.
+class SeqMore[A](val arr: Array[A]) {
+    def corresponds[B] (that: Seq[B], p: (A, B) => Boolean): Boolean = {
+        val result = arr.corresponds(that)(p)
+        result
+    }
+}
 
 // 10.
 
@@ -112,14 +118,31 @@ object PracTest extends App {
     //    }
     //}
 
-    val a = Array("Hello", "World")
-    val b = Array("hello", "world")
-    val is = a.corresponds(b)(_.equalsIgnoreCase(_))
+    val a = Array("Hello", "World", "camry-danny")
+    val b = Array(5, 5, 11)
+    val is = a.corresponds(b)(_.length == _)
     println(is);
 
     // 9.
+    // need indicated the type of x and y
     println("------------------------------  practice 9 -------------------------");
+    val aa = new SeqMore(a);
+    val is2 = aa.corresponds(b, (x: String, y: Int) => x.length == y)
+    println(is2);
 
     // 10.
     println("------------------------------  practice 10 -------------------------");
+    // 需要换名，需要柯里化，比较自然一些
+    def unless(condition: => Boolean)(block: => Unit) {
+        if (!condition) block
+    }
+
+    val cond = true;
+    if (cond) {
+        println("cond is true!")
+    }
+
+    unless(!cond) {
+        println("cond is not false!")
+    }
 }
