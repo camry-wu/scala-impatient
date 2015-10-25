@@ -4,6 +4,7 @@ package sec13
 import scala.collection.Map
 import scala.collection.Set
 import scala.collection.immutable.List
+import scala.collection.mutable.{Map => MMap}
 import scala.collection.mutable.LinkedHashSet
 import scala.collection.mutable.{HashMap => MHashMap}
 import scala.collection.mutable.SynchronizedMap
@@ -158,16 +159,48 @@ object PracTest extends App {
     //     }
     // }.start()
     // 
-    // 注意：两个线程并发访问 getOrElse 的时候可能是得到不同的数字
+    // 注意：两个线程并发访问 getOrElse 的时候可能是得到相同的数字
     // 再继续执行增加的方法，就可能得到错误的结果
     // 如：thead a 读到 1, 应该设置为 2
     // 而  thead b 也读到 1, 也会设置为 2
     // 最后结果设置为 2, 但实际上应该是 3 了
 
-    import scala.collection.JavaConversions.asScalaConcurrentMap
-    // val frequencies: scala.collection.mutable.ConcurrentMap[Char, Int] =
-    //      new java.util.concurrent.ConcurrentHashMap[Char, Int]
+    import scala.collection.JavaConversions.mapAsScalaConcurrentMap
+    //val frequencies: scala.collection.mutable.ConcurrentMap[Char, Int] =
+    //    new java.util.concurrent.ConcurrentHashMap[Char, Int]
+    // 注意，并没有 mutable.ConcurrentMap class，要从什么地方找？
+    
+    // 即使使用 ConcurrentMap，如果按上面的做法，也是同样的情况
+    // ConcurrentMap 只能保证在你访问 concurrentMap 提供的方法的时候是安全的
+    // 不能保证访问两个 concurrentMap 方法（get 然后再 put）是同步的
+    // 因此，ConcurrentMap 还提供了 putIfAbsent, remove, replace 等原子方法，
+    // 用来将读与写操作合成原子操作
+    // 正确做法如下：
+    def charCount(ori: MMap[Char, Int], ch: Char): MMap[Char, Int] = {
+        val res = ori
+        res(ch) = res.getOrElse(ch, 0) + 1
+        res
+    }
 
     // 10.
     println("------------------------------  practice 10 -------------------------");
+    // 如同第九题的情况一样，这样做不是线程安全的，最后的结果并不一定正确
+    // 正确做法如下：
+
+    def charCountAgg(map1: MMap[Char, Int], map2: MMap[Char, Int]): MMap[Char, Int] = {
+        val res = map1
+        for((k, v) <- map2) res(k) = res.getOrElse(k, 0) + v
+        res
+    }
+
+    def agg(src: String): MMap[Char, Int] = {
+        val result = src.par.aggregate(MMap[Char, Int] ())(charCount(_, _), charCountAgg(_, _))
+        result
+    }
+
+    println("char count of: Hello camry and danny!")
+    println(agg("Hello camry and danny!"))
+
+    // 似乎用 aggregate 执行，是将所有元素分别进行同步运算，然后又对运算结果做合并，就像
+    // hadoop 的 map reduce 一样，具体是不是这样，要进一步体会
 }
