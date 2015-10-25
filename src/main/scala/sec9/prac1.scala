@@ -105,7 +105,7 @@ object PracTest extends App {
         source.close
         out.close
     }
-    tab2blank("./s/sec9/test2.txt", "./s/sec9/test2.txt.blank");
+    tab2blank("./s/sec9/test2.txt", "./temp/sec9/test2.txt.blank");
     println("ok.")
 
     // 3.
@@ -246,8 +246,8 @@ object PracTest extends App {
 
     me.addFriend(fred1).addFriend(fred2).addFriend(fred3).addFriend(fred4).addFriend(fred5)
     println(me)
-    writePerson(me, "s/sec9/test10.obj")
+    writePerson(me, "temp/sec9/test10.obj")
 
-    val me2 = readPerson("s/sec9/test10.obj")
+    val me2 = readPerson("temp/sec9/test10.obj")
     println(me2)
 }
