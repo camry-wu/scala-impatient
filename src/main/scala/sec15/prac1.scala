@@ -1,6 +1,30 @@
 package sec15
 
 // 1.
+import org.junit.{Assert, Test, Rule}
+class JTest {
+    @Test
+    def testA {
+        println("junit test A.");
+    }
+
+    @Test(timeout = 5)
+    def testB {
+        println("junit test B.");
+    }
+
+    @Test(expected = classOf[java.io.IOException])
+    def testC {
+        println("junit test C.");
+        throw new java.io.IOException()
+    }
+
+    @Test(timeout = 5, expected = classOf[java.io.IOException])
+    def testD {
+        println("junit test D.");
+        throw new java.io.IOException()
+    }
+}
 
 // 2.
 
@@ -25,6 +49,8 @@ object PracTest extends App {
 
     // 1.
     println("------------------------------  practice 1 -------------------------");
+    // 用下面的方法在 activator 中执行 JUnit
+    // runMain org.junit.runner.JUnitCore sec15.JTest
 
     // 2.
     println("------------------------------  practice 2 -------------------------");
