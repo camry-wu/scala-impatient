@@ -169,7 +169,7 @@ object PracTest extends App {
     // as List(List(3, 8), 2, List(5))
     println(leafSum3(MulTreeNode(MulTreeNode(MulTreeLeaf(3), MulTreeLeaf(8)), MulTreeLeaf(2), MulTreeNode(MulTreeLeaf(5)))))
 
-    // 8.
+    // TODO 8.
     println("------------------------------  practice 8 -------------------------");
     def eval(tree: CalTree): Int = {
         var sum = 0
@@ -197,7 +197,14 @@ object PracTest extends App {
     println("------------------------------  practice 10 -------------------------");
     import scala.math._
     def compose(f: (Double) => Option[Double], g: (Double) => Option[Double]): (Double) => Option[Double] = {
-        f
+        val res = (x: Double) => {
+                val a = f(x)
+                a match {
+                    case None => None
+                    case _ => g(x)
+                }
+            }
+        res
     }
 
     def f(x: Double) = if (x >= 0) Some(sqrt(x)) else None
@@ -206,5 +213,5 @@ object PracTest extends App {
     val h = compose(f, g)
     println(h(2))       // Some(1)
     println(h(1))       // None
-    println(h(0))       // None
+    println(h(0))       // Some(-1) // Note: result is not None!
 }
