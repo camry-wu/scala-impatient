@@ -27,6 +27,17 @@ class JTest {
 }
 
 // 2.
+@deprecated(message="class") class Anno @deprecated(message="constructor") (var value: String) {
+    @deprecated(message="member") val name = ""
+    @deprecated(message="method") def a() {}
+
+    def b(@deprecated(message="var") src: String) {
+        val a: Int = (6 + 5): @deprecated(message="exp")
+    }
+
+    def c[@deprecated(message="var") T] (a: T) {
+    }
+}
 
 // 3.
 
