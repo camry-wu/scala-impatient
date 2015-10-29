@@ -171,11 +171,19 @@ object PracTest extends App {
 
     // TODO 8.
     println("------------------------------  practice 8 -------------------------");
-    def eval(tree: CalTree): Int = {
-        var sum = 0
+    def eval(tree: CalTree): Double = {
+        var sum = 0.0D
         tree match {
             case l: CalTreeLeaf => sum += l.value
-            case n: CalTreeNode => for (c <- n.children) sum += eval(c)
+            case n: CalTreeNode => {
+                    val op: Char = n.op
+                    op match {
+                        case '+' => for (c <- n.children) sum += eval(c)
+                        case '-' => for (c <- n.children) sum -= eval(c)
+                        case '*' => sum = 1.0D; for (c <- n.children) sum *= eval(c)
+                        case '/' => sum = 1.0D; for (c <- n.children) sum /= eval(c)
+                    }
+                }
         }
         sum
     }
