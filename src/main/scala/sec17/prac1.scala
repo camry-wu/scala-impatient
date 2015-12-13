@@ -12,14 +12,20 @@ class Pair[T, S] (val t: T, val s: S) {
 
 // 2.
 package mutable {
-    class Pair[T] (var t1: T, var t2: T) {
+    class Pair[T] (var first: T, var second: T) {
         def swap() {
-            val tmp = t1
-            t1 = t2
-            t2 = tmp
+            val tmp = first
+            first = second
+            second = tmp
         }
 
-        override def toString() = { "Pair[T](%s, %s)".format(t1.toString, t2.toString) }
+        override def toString() = { "Pair[T](%s, %s)".format(first.toString, second.toString) }
+
+        // 第 8 题，以下定义编译会出错 first 是 T，不能赋值为 R
+        // def replaceFirst[R >: T](newFirst: R) { first = newFirst }
+
+        // 以下定义可以编译通过，返回了一个新的 Pair[R]，此时 first 和 second 都是 R
+        def replaceFirst[R >: T](newFirst: R) = new Pair[R](newFirst, second)
     }
 }
 
@@ -32,12 +38,34 @@ package mutable {
 // 6.
 
 // 7.
+class Person(val name: String) {
+    override def toString = "P-[%s]".format(name)
+}
+
+class Student(name: String) extends Person(name) {
+    override def toString = "S-[%s]".format(name)
+}
+
+class SubStudent(name: String) extends Student(name) {
+    override def toString = "SubS-[%s]".format(name)
+}
 
 // 8.
 
 // 9.
 
 // 10.
+package mutable {
+    class NPair[S, T] (var first: S, var second: T) {
+        def swap(implicit ev: S =:= T) = {
+            val tmp = first.asInstanceOf[T]
+            first = second.asInstanceOf[S]
+            second = tmp
+        }
+
+        override def toString() = { "NPair[T](%s, %s)".format(first.toString, second.toString) }
+    }
+}
 
 object PracTest extends App {
     println ("sec17.PracTest")
@@ -93,13 +121,57 @@ object PracTest extends App {
 
     // 7.
     println("------------------------------  practice 7 -------------------------");
+    // 查看 Iterable[+A] 特质。哪些方法使用了类型参数 A ?
+    // "++:", "/:", ":\", aggregate, collect, collectFirst, copyToArray
+    // copyToBuffer, count, dropWhile, exists, filter, filterNot,
+    // find, flatMap, foldLeft, foldRight, forall, foreach, groupBy
+    // map, maxBy, minBy, partition, reductLeft, reduceLeftOption,
+    // reductRight, reductRightOption, sameElements, scan,
+    // scanLeft, scanRight, span, takeWhile, 
+    // transpose, unzip, unzip3, withFilter, zipAll
+
+    // 协变表示与 A 按同样的方向型变，Iterable[A 子类型] 是 Iterable[A] 的子类型
+    // 一般来说协变类型应当在返回值这个点上，逆变类型在参数值这个协变点上
+
+    // 为何在这些方法中类型参数位于协变点？
+    // 这些方法的参数往往都是一个函数，A 是函数中的参数；或者隐式调用中的参数
+    // zipAll 有点特殊：zipAll[B](that: Iterable[B], thisElem: A, thatElem: B): Iterable[(A, B)]
+    // thisElem 表示当左列表比右列表短时，左边的缺省值
+
+    // 表示 Iterable[Person].zipAll(that, new Student(), thatElem) 是可行的？
+    val list7:List[Person] = List(new Person("camry"), new Person("danny"))
+    val list72:List[Int] = List(1, 2, 3)
+
+    println(list7.toString)
+    println(list72.toString)
+
+    val list73 = list7.zipAll(list72, new Student("other"), 99) // 推断出 A 是 Person?
+    println(list73.toString)
+
+    // val list74:List[Student] = List(new Person("camry"), new Person("danny"))   // 编译不过
+    val list74:List[Student] = List(new Student("camry"), new Student("danny"))
+
+    println(list74.zipAll(list72, new Person("other"), 99)) // 推断出 A 是 Person
 
     // 8.
     println("------------------------------  practice 8 -------------------------");
+    // 以下定义编译会出错 first 是 T，不能赋值为 R
 
     // 9.
     println("------------------------------  practice 9 -------------------------");
+    // TODO 未明白题意
 
     // 10.
     println("------------------------------  practice 10 -------------------------");
+    val p10 = new mutable.NPair("camry", true)
+    // p10.swap       // compile error
+    println(p10)
+
+    val p11 = new mutable.NPair("camry", "danny")
+    p11.swap            // compile ok, but p11.swap() cannot compile
+    println(p11)
+
+    val p12 = new mutable.NPair(true, false)
+    p12.swap
+    println(p12)
 }
