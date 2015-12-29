@@ -343,6 +343,8 @@ object CourseTest extends App {
     doc.set(Title).to("camry")
     println(doc)
 
+	doc set Title to "camry"
+
     // 2.
     println("------------------------------  section 2 -------------------------");
     val chatter = new Network
