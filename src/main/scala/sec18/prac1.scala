@@ -127,6 +127,33 @@ class Meters(v: Double) extends Dim[Seconds](v, "m") {
 }
 */
 
+// 用自身类型，编译器会保证类型一致
+trait Dim[T] {
+	this: T =>
+	val value: Double
+	val name: String
+	var source: T = _
+	def create(v: Double): T
+	def +(other: Dim[T]) = {
+		other.source = this				// 此时，如果 other.source 的类型与 this 不一致，会报错
+		create(value + other.value)
+	}
+
+	override def toString() = value + " " + name
+}
+
+class Seconds(v: Double) extends Dim[Seconds] {
+	val value = v
+	val name = "s"
+	override def create(v: Double) = new Seconds(v)
+}
+
+// class Meters(v: Double) extends Dim[Seconds] {	// 编译器会报错
+class Meters(v: Double) extends Dim[Meters] {
+	val value = v
+	val name = "m"
+	override def create(v: Double) = new Meters(v)
+}
 
 // 10.
 // 自身类型与 trait 从某个类型继承差不多
@@ -265,7 +292,9 @@ object PracTest extends App {
 	val second = new Seconds(1)
 	val meter = new Meters(2)
 
-	println(second + meter)
+	println(second)
+	println(meter)
+	//println(second + meter)	// compile error
 
     // 10.
     println("------------------------------  practice 10 -------------------------");
