@@ -110,6 +110,8 @@ class Network {
 // 8.
 
 // 9.
+// 如何让 Meters 只能从 Dim[Meters] 继承而不允许从 Dim[Seconds] 中继承？
+/*
 abstract class Dim[T] (val value: Double, val name: String) {
 	protected def create(v: Double): T
 	def +(other: Dim[T]) = create(value + other.value)
@@ -123,9 +125,50 @@ class Seconds(v: Double) extends Dim[Seconds](v, "s") {
 class Meters(v: Double) extends Dim[Seconds](v, "m") {
 	override def create(v: Double) = new Seconds(v)
 }
+*/
+
 
 // 10.
+// 自身类型与 trait 从某个类型继承差不多
 // 构造一个示例：使用自身类型会改变初始化和重写的顺序
+class Parent {
+	println("build Parent...")
+
+	def func(str: String) {
+		println("call func in Parent..." + str)
+	}
+}
+
+trait TChild extends Parent {
+	println("build TChild...")
+
+	override def func(str: String) {
+		super.func(str)
+		println("call func in TChild..." + str)
+	}
+}
+
+class Impl extends TChild {
+	println("build Impl...")
+
+	override def func(str: String) {
+		super.func(str)
+		println("call func in Impl..." + str)
+	}
+}
+
+trait TSelfChild {
+	this: Parent =>
+	println("build TSelfChild...")
+
+	def func(str: String) {
+		println("call func in TSelfChild..." + str)
+	}
+}
+
+class Impl2 extends Parent {
+	println("build Impl2...")
+}
 
 object PracTest extends App {
     println ("sec18.PracTest")
@@ -226,4 +269,19 @@ object PracTest extends App {
 
     // 10.
     println("------------------------------  practice 10 -------------------------");
+	val impl = new Impl
+	impl.func("impl")
+
+	println("---")
+	// 这种情况下先初始化 Impl2 然后才是 TSelfChild
+	// 当 trait 中定义了 func 的时候
+	// func 无法放在 Impl2 中定义，只能放在实例中重写，否则会有继承问题
+
+	val impl2 = new Impl2 with TSelfChild {
+		override def func(str: String) {
+			super.func(str)
+			println("call func in Impl2..." + str)
+		}
+	}
+	impl2.func("impl2")
 }
