@@ -1,39 +1,79 @@
 package sec20
 package course
+// 注意，scala.2.10 版后改为 akka 的 actor 库， 这里使用 akka actor 库
 
-// 1.
+import akka.actor.{Actor, ActorLogging, Props}
 
-// 2.
+// 1. 创建和启动 Actor
+class PingActor extends Actor with ActorLogging {
+	import PingActor._
+  
+	var counter = 0
+	val pongActor = context.actorOf(PongActor.props, "pongActor")
 
-// 3.
+	def receive = {
+		case Initialize => 
+			log.info("In PingActor - starting ping-pong")
+			pongActor ! PingMessage("ping")	
+		case PongActor.PongMessage(text) =>
+			log.info("In PingActor - received message: {}", text)
+			counter += 1
+			if (counter == 3) context.system.shutdown()
+			else sender() ! PingMessage("ping")
+	}
+}
 
-// 4.
+object PingActor {
+  val props = Props[PingActor]
+  case object Initialize
+  case class PingMessage(text: String)
+}
 
-// 5.
+class PongActor extends Actor with ActorLogging {
+	import PongActor._
 
-// 6.
+	def receive = {
+		case PingActor.PingMessage(text) => 
+			log.info("In PongActor - received message: {}", text)
+			sender() ! PongMessage("pong")
+	}
+}
 
-// 7.
+object PongActor {
+	val props = Props[PongActor]
+	case class PongMessage(text: String)
+}
 
-// 8.
+// 2. 发送消息
 
-// 9.
+// 3. 接收消息
 
-// 10.
+// 4. 向其他 Actor 发送消息
 
-// 11.
+// 5. 消息通道
 
-// 12.
+// 6. 同步消息和 Future
 
-// 13.
+// 7. 共享线程
 
-// 14.
+// 8. Actor 的生命周期
+
+// 9. 将多个 Actor 链接在一起
+
+// 10. Actor 的设计
 
 object CourseTest extends App {
     println ("sec20.course.CourseTest")
 
     // 1.
     println("------------------------------  section 1 -------------------------");
+	import akka.actor.ActorSystem
+	val system = ActorSystem("MyActorSystem")
+	val pingActor = system.actorOf(PingActor.props, "pingActor")
+	pingActor ! PingActor.Initialize
+	// This example app will ping pong 3 times and thereafter terminate the ActorSystem - 
+	// see counter logic in PingActor
+	system.awaitTermination()
 
     // 2.
     println("------------------------------  section 2 -------------------------");
@@ -61,16 +101,4 @@ object CourseTest extends App {
 
     // 10.
     println("------------------------------  section 10 -------------------------");
-
-    // 11.
-    println("------------------------------  section 11 -------------------------");
-
-    // 12.
-    println("------------------------------  section 12 -------------------------");
-
-    // 13.
-    println("------------------------------  section 13 -------------------------");
-
-    // 14.
-    println("------------------------------  section 14 -------------------------");
 }
