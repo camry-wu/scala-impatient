@@ -1,6 +1,13 @@
 package sec20
 package course
 // 注意，scala.2.10 版后改为 akka 的 actor 库， 这里使用 akka actor 库
+// 学习系列文章：   http://rerun.me/2014/09/19/akka-notes-actor-messaging-1/
+// --------------
+// actor 生命周期:
+// 通过构造函数创建 Actor
+// 调用它的 preStart 方法
+// 接收消息时，调用他的 receive 方法
+// 最后调用 postStop 方法将 Actor 置为终结状态
 
 import akka.actor.{Actor, ActorLogging, Props}
 
@@ -45,6 +52,28 @@ object PongActor {
 }
 
 // 2. 发送消息
+import scala.util.Random
+
+object TeacherProtocol {
+    case class QuoteRequest()
+    case class QuoteResponse(quoteString: String)
+}
+
+class TeacherActor extends Actor with ActorLogging {
+    val quotes = List(
+        "Moderation is for cowards",
+        "Anything worth doing is worth overdoing",
+        "The trouble is you think you have time",
+        "You never gonna know if you never even try"
+    )
+
+    def receive = {
+        case TeacherProtocol.QuoteRequest => {
+            val quoteResponse = TeacherProtocol.QuoteResponse(quotes(Random.nextInt(quotes.size)))
+            log.info(quoteResponse.toString)
+        }
+    }
+}
 
 // 3. 接收消息
 
@@ -64,6 +93,7 @@ object PongActor {
 
 object CourseTest extends App {
     println ("sec20.course.CourseTest")
+    // 由于 actor 运行在多线程环境中，下面的 println 并不会按顺序打印
 
     // 1.
     println("------------------------------  section 1 -------------------------");
@@ -73,10 +103,15 @@ object CourseTest extends App {
 	pingActor ! PingActor.Initialize
 	// This example app will ping pong 3 times and thereafter terminate the ActorSystem - 
 	// see counter logic in PingActor
-	system.awaitTermination()
+	// system.awaitTermination()   // terminating or terminated 就不能再创建 actor 了
+    // system.shutdown()
 
     // 2.
     println("------------------------------  section 2 -------------------------");
+    val teacherActorRef = system.actorOf(Props[TeacherActor], "teacherActorRef")
+    teacherActorRef ! TeacherProtocol.QuoteRequest
+    Thread.sleep(2000)
+    system.shutdown()
 
     // 3.
     println("------------------------------  section 3 -------------------------");
