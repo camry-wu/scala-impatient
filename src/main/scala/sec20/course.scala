@@ -9,6 +9,9 @@ package course
 // 接收消息时，调用他的 receive 方法
 // 最后调用 postStop 方法将 Actor 置为终结状态
 
+// --------------
+// 另外：执行 activator 的 about 命令可以自动 resolve 依赖库
+
 import akka.actor.{Actor, ActorLogging, Props}
 
 // 1. 创建和启动 Actor
