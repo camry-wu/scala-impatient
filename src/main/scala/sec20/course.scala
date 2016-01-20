@@ -2,6 +2,7 @@ package sec20
 package course
 // 注意，scala.2.10 版后改为 akka 的 actor 库， 这里使用 akka actor 库
 // 学习系列文章：   http://rerun.me/2014/09/19/akka-notes-actor-messaging-1/
+// http://it.deepinmind.com/akka/2014/10/22/akka-notes-logging-and-testing.html
 // --------------
 // actor 生命周期:
 // 通过构造函数创建 Actor
@@ -76,6 +77,39 @@ class TeacherActor extends Actor with ActorLogging {
             log.info(quoteResponse.toString)
         }
     }
+
+    // We'll cover the purpose of this method in the Testing section
+    def quoteList = quotes
+}
+
+// 2.1 日志与测试
+import akka.actor.ActorSystem
+import akka.testkit.TestKit
+class TeacherPreTest extends TestKit(ActorSystem("UniversityMessageSystem"))
+    with WordSpecLike
+    with MustMatchers
+    with BeforeAndAfterAll {
+
+        // 1. Sends message to the Print Actor. Not even a testcase actually
+        "A teacher" must {
+            "print a quote when a QuoteRequest message is sent" in {
+                val teacherRef = TestActorRef[TeacherActor]
+                teacherRef ! QuoteRequest
+            }
+        }
+
+        // 2. Sends message to the Log Actor. Again, not a testcase per se
+        "A teacher with ActorLogging" must {
+            "log a quote when a QuoteRequest message is sent" in {
+                val teacherRef = TestActorRef[TeacherLogActor]
+                teacherRef ! QuoteRequest
+            }
+        }
+
+        override def afterAll() {
+            super.afterAll()
+            system.shutdown()
+        }
 }
 
 // 3. 接收消息
@@ -100,7 +134,6 @@ object CourseTest extends App {
 
     // 1.
     println("------------------------------  section 1 -------------------------");
-	import akka.actor.ActorSystem
 	val system = ActorSystem("MyActorSystem")
 	val pingActor = system.actorOf(PingActor.props, "pingActor")
 	pingActor ! PingActor.Initialize
