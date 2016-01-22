@@ -13,7 +13,7 @@ package course
 // --------------
 // 另外：执行 activator 的 about 命令可以自动 resolve 依赖库
 
-import akka.actor.{Actor, ActorLogging, Props}
+import akka.actor.{Actor, ActorLogging, Props, ActorRef}
 
 // 1. 创建和启动 Actor
 class PingActor extends Actor with ActorLogging {
@@ -75,6 +75,7 @@ class TeacherActor extends Actor with ActorLogging {
         case TeacherProtocol.QuoteRequest => {
             val quoteResponse = TeacherProtocol.QuoteResponse(quotes(Random.nextInt(quotes.size)))
             log.info(quoteResponse.toString)
+			sender ! quoteResponse
         }
     }
 
@@ -84,37 +85,51 @@ class TeacherActor extends Actor with ActorLogging {
 
 // 2.1 日志与测试
 import akka.actor.ActorSystem
-import akka.testkit.TestKit
-class TeacherPreTest extends TestKit(ActorSystem("UniversityMessageSystem"))
-    with WordSpecLike
-    with MustMatchers
-    with BeforeAndAfterAll {
+// 请参见 src/test/scala/sec20/TeacherPreTest.scala
+// 请参见 src/test/scala/sec20/TeacherTest.scala
 
-        // 1. Sends message to the Print Actor. Not even a testcase actually
-        "A teacher" must {
-            "print a quote when a QuoteRequest message is sent" in {
-                val teacherRef = TestActorRef[TeacherActor]
-                teacherRef ! QuoteRequest
-            }
-        }
+// 2.2 带参数的 Actor
+class TeacherLogParameterActor (quotes:List[String]) extends Actor with ActorLogging {
 
-        // 2. Sends message to the Log Actor. Again, not a testcase per se
-        "A teacher with ActorLogging" must {
-            "log a quote when a QuoteRequest message is sent" in {
-                val teacherRef = TestActorRef[TeacherLogActor]
-                teacherRef ! QuoteRequest
-            }
-        }
+  lazy val _quotes = quotes
 
-        override def afterAll() {
-            super.afterAll()
-            system.shutdown()
-        }
+  def receive = {
+
+    case TeacherProtocol.QuoteRequest => {
+
+      //get a random element (for now)
+      val quoteResponse = TeacherProtocol.QuoteResponse(_quotes(Random.nextInt(_quotes.size)))
+      log.info(quoteResponse.toString())
+
+      //log.info("Quote printed") //This message is just to assert from the testcase      
+    }
+
+  }
+      
+  def quoteList=_quotes
 }
 
-// 3. 接收消息
+// 3. 接收消息，得到响应
+
+object StudentProtocol {
+	case class InitSignal()
+}
+
+class StudentActor (teacherActorRef: ActorRef) extends Actor with ActorLogging {
+	def receive = {
+		case StudentProtocol.InitSignal => {
+			teacherActorRef ! TeacherProtocol.QuoteRequest
+		}
+
+		case TeacherProtocol.QuoteResponse(quoteString) => {
+			log.info("Received QuoteResponse from Teacher")
+			log.info(s"Printing from Student Actor $quoteString")
+		}
+	}
+}
 
 // 4. 向其他 Actor 发送消息
+// 配置及调度
 
 // 5. 消息通道
 
@@ -133,8 +148,8 @@ object CourseTest extends App {
     // 由于 actor 运行在多线程环境中，下面的 println 并不会按顺序打印
 
     // 1.
-    println("------------------------------  section 1 -------------------------");
-	val system = ActorSystem("MyActorSystem")
+    // println("------------------------------  section 1 -------------------------");
+	val system = ActorSystem("UniversityMessageSystem")
 	val pingActor = system.actorOf(PingActor.props, "pingActor")
 	pingActor ! PingActor.Initialize
 	// This example app will ping pong 3 times and thereafter terminate the ActorSystem - 
@@ -143,33 +158,36 @@ object CourseTest extends App {
     // system.shutdown()
 
     // 2.
-    println("------------------------------  section 2 -------------------------");
+    // println("------------------------------  section 2 -------------------------");
     val teacherActorRef = system.actorOf(Props[TeacherActor], "teacherActorRef")
     teacherActorRef ! TeacherProtocol.QuoteRequest
-    Thread.sleep(2000)
-    system.shutdown()
 
     // 3.
-    println("------------------------------  section 3 -------------------------");
+    // println("------------------------------  section 3 -------------------------");
+
+	val studentRef = system.actorOf(Props(new StudentActor(teacherActorRef)), "studentRef")
+	studentRef ! StudentProtocol.InitSignal
 
     // 4.
-    println("------------------------------  section 4 -------------------------");
+    // println("------------------------------  section 4 -------------------------");
 
     // 5.
-    println("------------------------------  section 5 -------------------------");
+    // println("------------------------------  section 5 -------------------------");
 
     // 6.
-    println("------------------------------  section 6 -------------------------");
+    // println("------------------------------  section 6 -------------------------");
 
     // 7.
-    println("------------------------------  section 7 -------------------------");
+    // println("------------------------------  section 7 -------------------------");
 
     // 8.
-    println("------------------------------  section 8 -------------------------");
+    // println("------------------------------  section 8 -------------------------");
 
     // 9.
-    println("------------------------------  section 9 -------------------------");
+    // println("------------------------------  section 9 -------------------------");
 
     // 10.
-    println("------------------------------  section 10 -------------------------");
+    // println("------------------------------  section 10 -------------------------");
+    Thread.sleep(2000)
+    system.shutdown()
 }
