@@ -29,7 +29,7 @@ class PingActor extends Actor with ActorLogging {
 		case PongActor.PongMessage(text) =>
 			log.info("In PingActor - received message: {}", text)
 			counter += 1
-			if (counter == 3) context.system.shutdown()
+			if (counter == 3) {} // context.system.shutdown()   // 如果调用，会触发 system 关闭事件，后面的 shedule 任务不再执行
 			else sender() ! PingMessage("ping")
 	}
 }
@@ -130,6 +130,29 @@ class StudentActor (teacherActorRef: ActorRef) extends Actor with ActorLogging {
 
 // 4. 向其他 Actor 发送消息
 // 配置及调度
+import com.typesafe.config.ConfigFactory
+// ActorSystem("a") 等同于 ActorSystem("a", ConfigFactory.load())
+// 覆盖 application.conf 默认配置
+// val actorSystem = ActorSystem("UniversityMessageSystem", ConfigFactory.parseString("""akka.loggers=["akka.testkit.TestEventListener"]"""))
+// val actorSystem = ActorSystem("UniversityMessageSystem", ConfigFactory.load("cover-application.conf"))
+
+import scala.concurrent.duration._  // 5 seconds 可以用
+class StudentDelayedActor(teacherActorRef: ActorRef) extends Actor with ActorLogging {
+    def receive = {
+        case StudentProtocol.InitSignal => {
+            import context.dispatcher   // 隐式参数 ExecutionContext
+            //context.system.scheduler.scheduleOnce(5 seconds, teacherActorRef, TeacherProtocol.QuoteRequest)
+            context.system.scheduler.schedule(0 seconds, 3 seconds, teacherActorRef, TeacherProtocol.QuoteRequest)
+        }
+
+		case TeacherProtocol.QuoteResponse(quoteString) => {
+			log.info("Received QuoteResponse from Teacher")
+			log.info(s"Printing from Student Actor $quoteString")
+			// context.system.shutdown()
+        }
+    }
+}
+
 
 // 5. 消息通道
 
@@ -154,7 +177,7 @@ object CourseTest extends App {
 	pingActor ! PingActor.Initialize
 	// This example app will ping pong 3 times and thereafter terminate the ActorSystem - 
 	// see counter logic in PingActor
-	// system.awaitTermination()   // terminating or terminated 就不能再创建 actor 了
+	// system.awaitTermination()   // 会等某一个 actor 调用 context.system.shutdown 之后结束 // terminating or terminated 就不能再创建 actor 了
     // system.shutdown()
 
     // 2.
@@ -170,6 +193,16 @@ object CourseTest extends App {
 
     // 4.
     // println("------------------------------  section 4 -------------------------");
+    // 打印配置
+    println("***** " + system.settings.config.getValue("akka.loggers"))
+    // 覆盖属性
+    //import akka.testkit.TestEventListener
+    //val config = ConfigFactory.parseString("""akka.loggers=["akka.testkit.TestEventListener"]""")
+    //val sys2 = ActorSystem("UniversityMessageSystem", config.withFallback(ConfigFactory.load()))
+    //println("***** " + sys2.settings.config.getValue("akka.loggers"))
+
+	val studentDelayedRef = system.actorOf(Props(new StudentDelayedActor(teacherActorRef)), "studentDelayedRef")
+	studentDelayedRef ! StudentProtocol.InitSignal
 
     // 5.
     // println("------------------------------  section 5 -------------------------");
@@ -188,6 +221,8 @@ object CourseTest extends App {
 
     // 10.
     // println("------------------------------  section 10 -------------------------");
-    Thread.sleep(2000)
+    // system.awaitTermination()
+
+    Thread.sleep(10000)
     system.shutdown()
 }

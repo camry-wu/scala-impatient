@@ -11,12 +11,20 @@ import akka.testkit.TestKit
 import akka.testkit.TestActorRef
 
 import sec20.course.StudentActor
+import sec20.course.StudentDelayedActor
 import sec20.course.TeacherActor
 import sec20.course.StudentProtocol.InitSignal
 import sec20.course.TeacherProtocol.QuoteRequest
 import sec20.course.TeacherLogParameterActor
 
-class TeacherTest extends TestKit(ActorSystem("UniversityMessageSystem", ConfigFactory.parseString("""akka.loggers = ["akka.testkit.TestEventListener"]""")))
+class TeacherTest extends TestKit(ActorSystem("UniversityMessageSystem", ConfigFactory.parseString("""
+                                    akka {
+                                        loggers = ["akka.testkit.TestEventListener"]
+                                        test {
+                                            filter-leeway = 7s
+                                        }
+                                    }
+                                """)))
     with WordSpecLike
     with MustMatchers
     with BeforeAndAfterAll {
@@ -57,6 +65,17 @@ class TeacherTest extends TestKit(ActorSystem("UniversityMessageSystem", ConfigF
 				}
 			}
 		}
+
+        "A delayed student" must {
+            "fire the QuoteRequest after 5 seconds when an InitSignal is sent to it" in {
+				val teacherRef = TestActorRef[TeacherActor]
+				val studentRef = TestActorRef(new StudentDelayedActor(teacherRef))
+
+				EventFilter.info(start = "Printing from Student Actor", occurrences = 1) intercept {
+					studentRef ! InitSignal
+				}
+            }
+        }
 
         override def afterAll() {
             super.afterAll()
