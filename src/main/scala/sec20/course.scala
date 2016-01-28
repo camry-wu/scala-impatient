@@ -29,7 +29,7 @@ class PingActor extends Actor with ActorLogging {
 		case PongActor.PongMessage(text) =>
 			log.info("In PingActor - received message: {}", text)
 			counter += 1
-			if (counter == 3) {} // context.system.shutdown()   // 如果调用，会触发 system 关闭事件，后面的 shedule 任务不再执行
+			if (counter == 3) {} // context.system.shutdown()   // 如果调用，会触发 system 关闭事件，后面的 schedule 任务不再执行
 			else sender() ! PingMessage("ping")
 	}
 }
