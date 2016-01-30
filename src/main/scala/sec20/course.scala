@@ -29,7 +29,7 @@ class PingActor extends Actor with ActorLogging {
 		case PongActor.PongMessage(text) =>
 			log.info("In PingActor - received message: {}", text)
 			counter += 1
-			if (counter == 3) { context.system.shutdown } // context.system.shutdown()   // 如果调用，会触发 system 关闭事件，后面的 schedule 任务不再执行
+			if (counter == 3) { context.system.shutdown } // 调用 shutdown，会触发 system 关闭事件，后面的 schedule 任务不再执行
 			else sender() ! PingMessage("ping")
 	}
 }
@@ -129,14 +129,14 @@ class StudentActor (teacherActorRef: ActorRef) extends Actor with ActorLogging {
 }
 
 // 4. 向其他 Actor 发送消息
-// 配置及调度
+// 4.1 配置及调度
 import com.typesafe.config.ConfigFactory
 // ActorSystem("a") 等同于 ActorSystem("a", ConfigFactory.load())
 // 覆盖 application.conf 默认配置
 // val actorSystem = ActorSystem("UniversityMessageSystem", ConfigFactory.parseString("""akka.loggers=["akka.testkit.TestEventListener"]"""))
 // val actorSystem = ActorSystem("UniversityMessageSystem", ConfigFactory.load("cover-application.conf"))
 
-import scala.concurrent.duration._  // 5 seconds 可以用
+import scala.concurrent.duration._  // 5 seconds 需要 import
 class StudentDelayedActor(teacherActorRef: ActorRef) extends Actor with ActorLogging {
     def receive = {
         case StudentProtocol.InitSignal => {
@@ -153,25 +153,35 @@ class StudentDelayedActor(teacherActorRef: ActorRef) extends Actor with ActorLog
     }
 }
 
+// 4.2 在消息中带有继续处理的 actor 引用，可处理后继消息
 
 // 5. 消息通道
+// 似乎在 akka 中没有 Channel 概念了，应该是用 EventBus 来处理消息总线
+// 可参考 http://www.tuicool.com/articles/NzMb6vr
 
 // 6. 同步消息和 Future
+// 参考 akka.dispatch.Futures
 
 // 7. 共享线程
+// 好像 akka 中没有 react 方法了，akka 本身就是异步事件驱动的，不是通过 while 循环来处理 receive 方法的
+// 从日志中也可以看出来，akka 就是共享线程的
 
 // 8. Actor 的生命周期
 import akka.event.LoggingReceive
 class BasicLifecycleLoggingActor extends Actor with ActorLogging {
+    // 构造方法中的过程只会执行一次
     log.info("Inside BasicLifecycleLoggingActor Constructor")
     log.info(context.self.toString)
 
     override def preStart() = {
+        // preStart 方法中的过程会在重启时重新执行
         log.info("Inside the preStart method of BasicLifecycleLoggingActor")
     }
 
     def receive = LoggingReceive {
         case "hello" => log.info ("hello")
+        // 通过消息来终止 actor
+        case "stop" => context.stop(self)
     }
 
     override def postStop() = {
@@ -180,8 +190,24 @@ class BasicLifecycleLoggingActor extends Actor with ActorLogging {
 }
 
 // 9. 将多个 Actor 链接在一起
+// 参考 Actor 路径，子 actor 失败后，父 actor 可以对下一步情况做控制
+// 参考 akka 监控与监督
+class TeacherSupervisor extends Actor with ActorLogging {
+    val teacherActor = context.actorOf(Props[TeacherActor], "teacherActor")
+    def receive = {
+		case "hello" => {}
+    }
+}
 
 // 10. Actor 的设计
+// 1. 避免使用共享状态，actor 不要访问外部数据，可根据消息修改内部数据
+// 2. 不要调用 actor 的方法，而应该发送消息，如果 actor 中没有其他 actor 的引用，就容易避免
+//      这时，应该会使用到 EventBus
+// 3. 保持每个 actor 的简单性，接收任务做计算，把结果传递下去，而不是改变状态
+// 4. 消息中包含上下文数据，actor 就可理解消息，而不需要访问别的对象
+// 5. 不需要复杂的 reply，应该组成一个 actor 网络，每个 actor 做部分计算，有些 actor 合并最终结果
+// 6. 小心消息阻塞
+// 7. 监控和监督 actor 执行，对失败的 actor 做正确的处理：登记问题或者重试，或者简单抛出问题
 
 object CourseTest extends App {
     println ("sec20.course.CourseTest")
@@ -227,8 +253,7 @@ object CourseTest extends App {
 
     // 8.
     // println("------------------------------  section 8 -------------------------");
-	val lifecycleActor = system.actorOf(Props[BasicLifecycleLoggingActor], "lifecycleActor")
-	lifecycleActor ! "hello"
+    // see LifecycleApp
 
     // 9.
     // println("------------------------------  section 9 -------------------------");
@@ -253,9 +278,40 @@ object PingPongApp extends App {
     system.shutdown()
 }
 
+import akka.actor.PoisonPill
+import akka.actor.DeadLetter
 object LifecycleApp extends App {
     val actorSystem = ActorSystem("LefecycleActorSystem")
     val lifecycleActor = actorSystem.actorOf(Props[BasicLifecycleLoggingActor], "lifecycleActor")
-    actorSystem.stop(lifecycleActor)
+    val deadLetterListener = actorSystem.actorOf(Props(new Actor{
+            def receive = {
+                case deadLetter: DeadLetter => println(s"FROM CUSTOM LISTENER $deadLetter")
+            }
+        }))
+    actorSystem.eventStream.subscribe(deadLetterListener, classOf[DeadLetter]) // 额外订阅一下 deadletter
+
+	lifecycleActor ! "hello"
+	lifecycleActor ! "bubble"
+
+
+    // 可以通过 stop 让 actor 终止，可能会收到一个 deadletter
+    // actorSystem.stop(lifecycleActor)
+    
+    // 通过发消息来终止 actor
+	// lifecycleActor ! "stop"
+    
+    // 通过发 PoisonPill 来终止 actor
+	lifecycleActor ! PoisonPill
+	lifecycleActor ! "hello"
+
+    Thread.sleep(2000)      // 等一会，以便可以处理到 deadletter
+    actorSystem.shutdown()
+}
+
+object ActorPathApp extends App {
+    val actorSystem = ActorSystem("SupervisionActorSystem")
+    //val lifecycleActor = actorSystem.actorOf(Props[BasicLifecycleLoggingActor]) // akka://SupervisionActorSystem/user/$a
+    val lifecycleActor = actorSystem.actorOf(Props[BasicLifecycleLoggingActor], "lifecycleActor")
+    println (lifecycleActor.path)
     actorSystem.shutdown()
 }
