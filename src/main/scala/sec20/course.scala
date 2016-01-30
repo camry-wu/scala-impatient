@@ -29,7 +29,7 @@ class PingActor extends Actor with ActorLogging {
 		case PongActor.PongMessage(text) =>
 			log.info("In PingActor - received message: {}", text)
 			counter += 1
-			if (counter == 3) {} // context.system.shutdown()   // 如果调用，会触发 system 关闭事件，后面的 schedule 任务不再执行
+			if (counter == 3) { context.system.shutdown } // context.system.shutdown()   // 如果调用，会触发 system 关闭事件，后面的 schedule 任务不再执行
 			else sender() ! PingMessage("ping")
 	}
 }
@@ -161,6 +161,23 @@ class StudentDelayedActor(teacherActorRef: ActorRef) extends Actor with ActorLog
 // 7. 共享线程
 
 // 8. Actor 的生命周期
+import akka.event.LoggingReceive
+class BasicLifecycleLoggingActor extends Actor with ActorLogging {
+    log.info("Inside BasicLifecycleLoggingActor Constructor")
+    log.info(context.self.toString)
+
+    override def preStart() = {
+        log.info("Inside the preStart method of BasicLifecycleLoggingActor")
+    }
+
+    def receive = LoggingReceive {
+        case "hello" => log.info ("hello")
+    }
+
+    override def postStop() = {
+        log.info("Inside postStop method of BasicLifecycleLoggingActor")
+    }
+}
 
 // 9. 将多个 Actor 链接在一起
 
@@ -172,16 +189,11 @@ object CourseTest extends App {
 
     // 1.
     // println("------------------------------  section 1 -------------------------");
-	val system = ActorSystem("UniversityMessageSystem")
-	val pingActor = system.actorOf(PingActor.props, "pingActor")
-	pingActor ! PingActor.Initialize
-	// This example app will ping pong 3 times and thereafter terminate the ActorSystem - 
-	// see counter logic in PingActor
-	// system.awaitTermination()   // 会等某一个 actor 调用 context.system.shutdown 之后结束 // terminating or terminated 就不能再创建 actor 了
-    // system.shutdown()
+    // see PingPongApp
 
     // 2.
     // println("------------------------------  section 2 -------------------------");
+	val system = ActorSystem("UniversityMessageSystem")
     val teacherActorRef = system.actorOf(Props[TeacherActor], "teacherActorRef")
     teacherActorRef ! TeacherProtocol.QuoteRequest
 
@@ -215,6 +227,8 @@ object CourseTest extends App {
 
     // 8.
     // println("------------------------------  section 8 -------------------------");
+	val lifecycleActor = system.actorOf(Props[BasicLifecycleLoggingActor], "lifecycleActor")
+	lifecycleActor ! "hello"
 
     // 9.
     // println("------------------------------  section 9 -------------------------");
@@ -225,4 +239,23 @@ object CourseTest extends App {
 
     Thread.sleep(10000)
     system.shutdown()
+}
+
+object PingPongApp extends App {
+	val system = ActorSystem("UniversityMessageSystem")
+	val pingActor = system.actorOf(PingActor.props, "pingActor")
+	pingActor ! PingActor.Initialize
+
+	// This example app will ping pong 3 times and thereafter terminate the ActorSystem - 
+	// see counter logic in PingActor
+
+	system.awaitTermination()   // 会等某一个 actor 调用 context.system.shutdown 之后结束 // terminating or terminated 就不能再创建 actor 了
+    system.shutdown()
+}
+
+object LifecycleApp extends App {
+    val actorSystem = ActorSystem("LefecycleActorSystem")
+    val lifecycleActor = actorSystem.actorOf(Props[BasicLifecycleLoggingActor], "lifecycleActor")
+    actorSystem.stop(lifecycleActor)
+    actorSystem.shutdown()
 }
