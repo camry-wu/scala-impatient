@@ -255,10 +255,10 @@ class TeacherActorWatcher extends Actor with ActorLogging {
 /*
 // DefaultSupervisorStrategy
     final val defaultDecider: Decider = {
-        case _: ActorInitializationException ⇒ Stop
-        case _: ActorKilledException         ⇒ Stop
-        case _: DeathPactException           ⇒ Stop
-        case _: Exception                    ⇒ Restart
+        case _: ActorInitializationException => Stop
+        case _: ActorKilledException         => Stop
+        case _: DeathPactException           => Stop    // 观察到 stop，但没有处理 Terminated 事件的 actor 会得到一个 DeathPactException
+        case _: Exception                    => Restart
     }
     final val defaultStrategy: SupervisorStrategy = {
         OneForOneStrategy()(defaultDecider)
@@ -275,6 +275,7 @@ class TeacherActorWatcher extends Actor with ActorLogging {
 
 import akka.actor.AllForOneStrategy
 import akka.actor.OneForOneStrategy
+import akka.actor.Kill
 import akka.actor.SupervisorStrategy.Escalate
 import akka.actor.SupervisorStrategy.Restart
 import akka.actor.SupervisorStrategy.Stop
@@ -308,6 +309,29 @@ class TeacherActorAllForOne extends Actor with ActorLogging {
     override def supervisorStrategy = AllForOneStrategy() {
         case _: MajorUnRecoverableException => Stop
         case _: Exception => Escalate
+    }
+}
+
+class DeathPactExceptionParentActor extends Actor with ActorLogging {
+    def receive = {
+        case "create_child" => {
+            log.info ("creating child")
+            val child = context.actorOf(Props[DeathPactExceptionChildActor])
+            context.watch(child)    // Watches but doesn't handle terminated message. Throwing DeathPactException here.
+            child ! "stop"
+        }
+        case "someMessage" => log.info ("some message")
+        // Doesn't handle terminated message
+        // case Terminated(_) =>
+    }
+}
+
+class DeathPactExceptionChildActor extends Actor with ActorLogging {
+    def receive = {
+        case "stop" => {
+            log.info ("Actor going to stop and announce that it's terminated")
+            self ! PoisonPill
+        }
     }
 }
 
@@ -370,6 +394,9 @@ object CourseTest extends App {
     // 9.
     // println("------------------------------  section 9 -------------------------");
     // see TeacherWatchTest
+    // see ActorInitializationExceptionApp
+    // see ActorKilledExceptionApp
+    // see DeathPactExceptionApp
 
     // 10.
     // println("------------------------------  section 10 -------------------------");
@@ -408,6 +435,9 @@ object LifecycleApp extends App {
 
     // 可以通过 stop 让 actor 终止，可能会收到一个 deadletter
     // actorSystem.stop(lifecycleActor)
+
+    // 可以 kill actor
+    // lifecycleActor ! Kill
     
     // 通过发消息来终止 actor
 	// lifecycleActor ! "stop"
@@ -425,5 +455,47 @@ object ActorPathApp extends App {
     //val lifecycleActor = actorSystem.actorOf(Props[BasicLifecycleLoggingActor]) // akka://SupervisionActorSystem/user/$a
     val lifecycleActor = actorSystem.actorOf(Props[BasicLifecycleLoggingActor], "lifecycleActor")
     println (lifecycleActor.path)
+    actorSystem.shutdown()
+}
+
+object ActorInitializationExceptionApp extends App {
+    val actorSystem = ActorSystem("ActorInitializationException")
+    val actor = actorSystem.actorOf(Props(new Actor with ActorLogging() {
+            override def preStart = {
+                throw new Exception("Some random exception")
+            }
+
+            def receive = {
+                case _ =>
+            }
+        }), "initializationExceptionActor")
+    actor ! "someMessageThatWillGoToDeadLetter"
+    Thread.sleep(2000)      // 等一会，以便可以处理到 deadletter
+    actorSystem.shutdown()
+}
+
+object ActorKilledExceptionApp extends App {
+    val actorSystem = ActorSystem("ActorKilledExceptionSystem")
+    val actor = actorSystem.actorOf(Props(new Actor with ActorLogging() {
+            def receive = {
+                case message:String => log.info(message)
+                case _ =>
+            }
+        }), "actorKilledExceptionActor")
+
+    actor ! "something"
+    actor ! Kill
+    actor ! "something else that falls into dead letter queue"
+    Thread.sleep(2000)      // 等一会，以便可以处理到 deadletter
+    actorSystem.shutdown()
+}
+
+object DeathPactExceptionApp extends App {
+    val actorSystem = ActorSystem("DeathPactExceptionSystem")
+    val actor = actorSystem.actorOf(Props[DeathPactExceptionParentActor])
+    actor ! "create_child" // throws DeathPactException
+
+    Thread.sleep(2000)      // 等一会
+    actor ! "someMessage"   // Message goes to DeadLetters
     actorSystem.shutdown()
 }
