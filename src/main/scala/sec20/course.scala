@@ -60,7 +60,9 @@ import scala.util.Random
 
 object TeacherProtocol {
     case class QuoteRequest()
+    case class QuoteRepositoryRequest()
     case class QuoteResponse(quoteString: String)
+    case class QuoteRepositoryResponse(quoteString: String)
 }
 
 class TeacherActor extends Actor with ActorLogging {
@@ -190,12 +192,60 @@ class BasicLifecycleLoggingActor extends Actor with ActorLogging {
 }
 
 // 9. 将多个 Actor 链接在一起
-// 参考 Actor 路径，子 actor 失败后，父 actor 可以对下一步情况做控制
-// 参考 akka 监控与监督
+// 参考 Actor 路径
+// 参考 akka 监控与监督，子 actor 失败后，父 actor 可以对下一步情况做控制
+
+// 创建一个子 actor
 class TeacherSupervisor extends Actor with ActorLogging {
     val teacherActor = context.actorOf(Props[TeacherActor], "teacherActor")
     def receive = {
 		case "hello" => {}
+    }
+}
+
+// 任何一个 actor 都可以对 actorSystem 中的其他 actor 进行监控，但监督则对 actor 的父子关系有约束
+import akka.actor.actorRef2Scala
+import akka.actor.PoisonPill
+import akka.actor.Terminated
+
+class QuoteRepositoryActor extends Actor with ActorLogging {
+    val quotes = List(
+        "1. Moderation is for cowards",
+        "2. Anything worth doing is worth overdoing",
+        "3. The trouble is you think you have time",
+        "4. You never gonna know if you never even try"
+    )
+
+    var repoRequestCount: Int = 1
+
+    def receive = {
+        case TeacherProtocol.QuoteRepositoryRequest => {
+            if (repoRequestCount > 3) {
+                self ! PoisonPill
+            } else {
+                // Get a random Quote from the list and construct a response
+                val quoteResponse = TeacherProtocol.QuoteRepositoryResponse(quotes(Random.nextInt(quotes.size)))
+
+                log.info(s"QuoteRequest received in QuoteRepositoryActor. Sending response to Sender $quoteResponse")
+                log.info(s"Sender Actor is: $sender")
+                repoRequestCount = repoRequestCount + 1
+                sender ! quoteResponse
+            }
+        }
+    }
+}
+
+class TeacherActorWatcher extends Actor with ActorLogging {
+    val quoteRepositoryActor = context.actorOf(Props[QuoteRepositoryActor], "quoteRepositoryActor")
+    context.watch(quoteRepositoryActor)
+
+    def receive = {
+        case TeacherProtocol.QuoteRequest => {
+            quoteRepositoryActor ! TeacherProtocol.QuoteRepositoryRequest
+        }
+        case Terminated(terminatedActorRef) => {
+            log.error(s"Child Actor {$terminatedActorRef} Terminated")
+        }
     }
 }
 
@@ -257,6 +307,7 @@ object CourseTest extends App {
 
     // 9.
     // println("------------------------------  section 9 -------------------------");
+    // see TeacherWatchTest
 
     // 10.
     // println("------------------------------  section 10 -------------------------");
@@ -278,7 +329,6 @@ object PingPongApp extends App {
     system.shutdown()
 }
 
-import akka.actor.PoisonPill
 import akka.actor.DeadLetter
 object LifecycleApp extends App {
     val actorSystem = ActorSystem("LefecycleActorSystem")
