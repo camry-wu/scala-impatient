@@ -249,6 +249,68 @@ class TeacherActorWatcher extends Actor with ActorLogging {
     }
 }
 
+// 策略
+// AllForOneStrategy    // 一个分支失败，其他的也一起失败
+// OneForOneStrategy    // 一个分支失败，其他的仍然可以继续
+/*
+// DefaultSupervisorStrategy
+    final val defaultDecider: Decider = {
+        case _: ActorInitializationException ⇒ Stop
+        case _: ActorKilledException         ⇒ Stop
+        case _: DeathPactException           ⇒ Stop
+        case _: Exception                    ⇒ Restart
+    }
+    final val defaultStrategy: SupervisorStrategy = {
+        OneForOneStrategy()(defaultDecider)
+    }
+*/
+// StoppingSupervisorStrategy
+
+// 指令
+// Stop, Resume, Escalate, Restart
+// Stop:        The child actor is stopped in case of exception and any messages to the stopped actor would obviously go to the deadLetters queue.
+// Resume:      The child actor just ignores the message that threw the exception and proceeds with processing the rest of the messages in the queue.
+// Restart:     The child actor is stopped and a brand new actor is initialized. Processing of the rest of the messages in the mailbox continue. The rest of the world is unaware that this happened since the same ActorRef is attached to the new Actor.
+// Escalate:    The supervisor ducks the failure and lets its supervisor handle the exception.
+
+import akka.actor.AllForOneStrategy
+import akka.actor.OneForOneStrategy
+import akka.actor.SupervisorStrategy.Escalate
+import akka.actor.SupervisorStrategy.Restart
+import akka.actor.SupervisorStrategy.Stop
+
+@SerialVersionUID(1L)
+class MinorRecoverableException(message: String, cause: Throwable) extends Exception(message, cause) with Serializable {
+    def this(msg: String) = this(msg, null)
+}
+
+@SerialVersionUID(1L)
+class MajorUnRecoverableException(message: String, cause: Throwable) extends Exception(message, cause) with Serializable {
+    def this(msg: String) = this(msg, null)
+}
+
+class TeacherActorOneForOne extends Actor with ActorLogging {
+    def receive = {
+        case TeacherProtocol.QuoteRequest => {}
+    }
+
+    override def supervisorStrategy = OneForOneStrategy() {
+        case _: MinorRecoverableException => Restart
+        case _: Exception => Stop
+    }
+}
+
+class TeacherActorAllForOne extends Actor with ActorLogging {
+    def receive = {
+        case TeacherProtocol.QuoteRequest => {}
+    }
+
+    override def supervisorStrategy = AllForOneStrategy() {
+        case _: MajorUnRecoverableException => Stop
+        case _: Exception => Escalate
+    }
+}
+
 // 10. Actor 的设计
 // 1. 避免使用共享状态，actor 不要访问外部数据，可根据消息修改内部数据
 // 2. 不要调用 actor 的方法，而应该发送消息，如果 actor 中没有其他 actor 的引用，就容易避免
