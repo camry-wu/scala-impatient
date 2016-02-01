@@ -4,16 +4,10 @@ package course
 // 学习系列文章：   http://rerun.me/2014/09/19/akka-notes-actor-messaging-1/
 // http://it.deepinmind.com/akka/2014/10/22/akka-notes-logging-and-testing.html
 // --------------
-// actor 生命周期:
-// 通过构造函数创建 Actor
-// 调用它的 preStart 方法
-// 接收消息时，调用他的 receive 方法
-// 最后调用 postStop 方法将 Actor 置为终结状态
-
-// --------------
-// 另外：执行 activator 的 about 命令可以自动 resolve 依赖库
+// 执行 activator 的 about 命令可以自动 resolve 依赖库
 
 import akka.actor.{Actor, ActorLogging, Props, ActorRef}
+import akka.actor.ActorSystem
 
 // 1. 创建和启动 Actor
 class PingActor extends Actor with ActorLogging {
@@ -86,7 +80,6 @@ class TeacherActor extends Actor with ActorLogging {
 }
 
 // 2.1 日志与测试
-import akka.actor.ActorSystem
 // 请参见 src/test/scala/sec20/TeacherPreTest.scala
 // 请参见 src/test/scala/sec20/TeacherTest.scala
 
@@ -169,9 +162,14 @@ class StudentDelayedActor(teacherActorRef: ActorRef) extends Actor with ActorLog
 // 从日志中也可以看出来，akka 就是共享线程的
 
 // 8. Actor 的生命周期
+// --------------
+// 通过构造函数创建 Actor
+// 调用它的 preStart 方法
+// 接收消息时，调用他的 receive 方法
+// 最后调用 postStop 方法将 Actor 置为终结状态
 import akka.event.LoggingReceive
 class BasicLifecycleLoggingActor extends Actor with ActorLogging {
-    // 构造方法中的过程只会执行一次
+    // 构造方法中的过程只会执行一次，Restart 后也会执行构造方法
     log.info("Inside BasicLifecycleLoggingActor Constructor")
     log.info(context.self.toString)
 
@@ -203,7 +201,7 @@ class TeacherSupervisor extends Actor with ActorLogging {
     }
 }
 
-// 任何一个 actor 都可以对 actorSystem 中的其他 actor 进行监控，但监督则对 actor 的父子关系有约束
+// 任何一个 actor 都可以对 actorSystem 中的其他 actor 进行监控，但监督则对 actor 的父子关系有约束，监督实际上指的是对子 actor 中出现的异常情况的处理
 import akka.actor.actorRef2Scala
 import akka.actor.PoisonPill
 import akka.actor.Terminated
@@ -249,7 +247,7 @@ class TeacherActorWatcher extends Actor with ActorLogging {
     }
 }
 
-// 策略
+// 监督策略
 // AllForOneStrategy    // 一个分支失败，其他的也一起失败
 // OneForOneStrategy    // 一个分支失败，其他的仍然可以继续
 /*
@@ -269,7 +267,7 @@ class TeacherActorWatcher extends Actor with ActorLogging {
 // 指令
 // Stop, Resume, Escalate, Restart
 // Stop:        The child actor is stopped in case of exception and any messages to the stopped actor would obviously go to the deadLetters queue.
-// Resume:      The child actor just ignores the message that threw the exception and proceeds with processing the rest of the messages in the queue.
+// Resume:      The child actor just ignores the message that threw the exception and proceeds with processing the rest of the messages in the queue. Resume 仅抛出异常，会调用 preStart 吗？
 // Restart:     The child actor is stopped and a brand new actor is initialized. Processing of the rest of the messages in the mailbox continue. The rest of the world is unaware that this happened since the same ActorRef is attached to the new Actor.
 // Escalate:    The supervisor ducks the failure and lets its supervisor handle the exception.
 
@@ -278,6 +276,7 @@ import akka.actor.OneForOneStrategy
 import akka.actor.Kill
 import akka.actor.SupervisorStrategy.Escalate
 import akka.actor.SupervisorStrategy.Restart
+import akka.actor.SupervisorStrategy.Resume
 import akka.actor.SupervisorStrategy.Stop
 
 @SerialVersionUID(1L)
@@ -333,6 +332,110 @@ class DeathPactExceptionChildActor extends Actor with ActorLogging {
             self ! PoisonPill
         }
     }
+}
+
+class OtherExceptionParentActor extends Actor with ActorLogging {
+	def receive = {
+		case "create_child" => {
+			log.info("creating child")
+			val child = context.actorOf(Props[OtherExceptionChildActor])
+
+			child ! "throwSomeException"
+			child ! "someMessage"
+		}
+	}
+
+	// 在此处声明的监督是对子 actor 抛出的异常进行处理
+	// Resume 的话，仅打印一条 warning 信息，其他什么也不做，也不会 restart
+	// 子 actor 的 preStart 方法也不会被调用
+	// Restart 的话，会重新构造子 actor，会调用 preStart
+    override def supervisorStrategy = OneForOneStrategy() {
+        case _: Exception => Restart // Resume
+    }
+}
+
+class OtherExceptionChildActor extends Actor with ActorLogging {
+	log.info("In OtherExceptionChildActor constructor")
+
+	override def preStart() = {
+		log.info ("Starting child actor")
+	}
+
+	def receive = {
+		case "throwSomeException" => {
+			throw new Exception ("I'm getting thrown for no reason")
+		}
+		case "someMessage" => log.info ("Restarted and printing some Message")
+	}
+
+	override def postStop() = {
+		log.info ("Stopping child actor")
+	}
+
+	override def postRestart(reason: Throwable): Unit = {	// 何时调用？
+		preStart()
+	}
+}
+
+class EscalateExceptionTopLevelActor extends Actor with ActorLogging {
+	override val supervisorStrategy = OneForOneStrategy() {
+		case _: Exception => {
+			log.info("The exception from the Child is now handled by the Top level Actor. Stopping Parent Actor and its children.")
+			Stop	// Stop will stop the Actor that threw this Exception and all its children
+		}
+	}
+
+	def receive = {
+		case "create_parent" => {
+			log.info("creating parent")
+			val parent = context.actorOf(Props[EscalateExceptionParentActor], "parentActor")
+			parent ! "create_child" // Sending message to next level
+		}
+		case _ =>
+	}
+}
+
+class EscalateExceptionParentActor extends Actor with ActorLogging {
+	override def preStart = {
+		log.info ("Parent Actor started")
+	}
+
+	override val supervisorStrategy = OneForOneStrategy() {
+		case _: Exception => {
+			log.info("The exception is ducked by the Parent Actor. Escalating to TopLevel Actor")
+			Escalate
+		}
+	}
+
+	def receive = {
+		case "create_child" => {
+			log.info ("creating child")
+			val child = context.actorOf(Props[EscalateExceptionChildActor], "childActor")
+			child ! "throwSomeException"
+		}
+		case _ =>
+	}
+
+	override def postStop() = {
+		log.info("Stopping parent Actor")
+	}
+}
+
+class EscalateExceptionChildActor extends Actor with ActorLogging {
+	override def preStart = {
+		log.info ("Child Actor started")
+	}
+
+	def receive = {
+		case "throwSomeException" => {
+			throw new Exception("I'm getting thrown for no reason.")
+		}
+		case _ =>
+	}
+
+	override def postStop() = {
+		log.info("Stopping child Actor")
+	}
 }
 
 // 10. Actor 的设计
@@ -397,6 +500,8 @@ object CourseTest extends App {
     // see ActorInitializationExceptionApp
     // see ActorKilledExceptionApp
     // see DeathPactExceptionApp
+	// see OtherExceptionApp
+	// see EscalateExceptionApp
 
     // 10.
     // println("------------------------------  section 10 -------------------------");
@@ -497,5 +602,23 @@ object DeathPactExceptionApp extends App {
 
     Thread.sleep(2000)      // 等一会
     actor ! "someMessage"   // Message goes to DeadLetters
+    actorSystem.shutdown()
+}
+
+object OtherExceptionApp extends App {
+    val actorSystem = ActorSystem("OtherExceptionSystem")
+    val actor = actorSystem.actorOf(Props[OtherExceptionParentActor])
+    actor ! "create_child"
+
+    Thread.sleep(2000)      // 等一会
+    actorSystem.shutdown()
+}
+
+object EscalateExceptionApp extends App {
+    val actorSystem = ActorSystem("EscalateExceptionSystem")
+    val actor = actorSystem.actorOf(Props[EscalateExceptionTopLevelActor], "topLevelActor")
+    actor ! "create_parent"
+
+    Thread.sleep(2000)      // 等一会
     actorSystem.shutdown()
 }
