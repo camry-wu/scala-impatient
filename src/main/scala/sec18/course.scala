@@ -66,7 +66,7 @@ trait LoggedException extends Logged {
 	def log() { log(getMessage()) }
 }
 
-// this 的别名
+// this 的别名，这样内部类可以用 this 关键字
 trait Group {
 	outer: Network =>
 		class Member {
@@ -111,7 +111,8 @@ trait TApp {
 object MyApp extends TApp with FileLogger with MockAuth
 */
 
-// 蛋糕模式实现依赖注入
+// 蛋糕模式实现依赖注入：即用特质的自身类型说明特质可使用的接口，并在构建时用 with 混入实例
+// 蛋糕模式参考：http://scalatutorials.com/code/2013/07/09/scala-cake-pattern/
 // 用代码来完成依赖注入，好处在于编译器可以帮助校验类型
 // 坏处在于需要编译，运行期没法灵活替换
 // 不过一般情况下，运行期也不需要替换配置
