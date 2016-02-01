@@ -150,6 +150,42 @@ class StudentDelayedActor(teacherActorRef: ActorRef) extends Actor with ActorLog
 
 // 4.2 在消息中带有继续处理的 actor 引用，可处理后继消息
 
+object EventProtocol {
+    case class Init()
+    case class Event(head: String, body: String, nextActor: ActorRef)
+    case class FinalEvent(head: String, body: String)
+}
+
+class Engine extends Actor with ActorLogging {
+    val normalizationActor = context.actorOf(Props[Normalization], "normalizationActor")
+    val sinkActor = context.actorOf(Props[Sink], "sinkActor")
+
+    def receive = {
+        case EventProtocol.Init => {
+            log.info("Init Engine")
+            log.info("create events and send to Normalization")
+            (1 to 3000).foreach (i => normalizationActor ! EventProtocol.Event("initHead(" + i + ")", "initBody", sinkActor))
+            context.system.shutdown
+        }
+    }
+}
+
+class Normalization extends Actor with ActorLogging {
+    def receive = {
+        case EventProtocol.Event(head, body, nextActor) => {
+            nextActor ! EventProtocol.FinalEvent(head + "-Normalization", body + "-Normalization")
+        }
+    }
+}
+
+class Sink extends Actor with ActorLogging {
+    def receive = {
+        case EventProtocol.FinalEvent(head, body) => {
+            log.info(s"Save the Event [$head]-[$body]")
+        }
+    }
+}
+
 // 5. 消息通道
 // 似乎在 akka 中没有 Channel 概念了，应该是用 EventBus 来处理消息总线
 // 可参考 http://www.tuicool.com/articles/NzMb6vr
@@ -481,6 +517,8 @@ object CourseTest extends App {
 	val studentDelayedRef = system.actorOf(Props(new StudentDelayedActor(teacherActorRef)), "studentDelayedRef")
 	studentDelayedRef ! StudentProtocol.InitSignal
 
+    // see EventApp
+
     // 5.
     // println("------------------------------  section 5 -------------------------");
 
@@ -521,6 +559,15 @@ object PingPongApp extends App {
 
 	system.awaitTermination()   // 会等某一个 actor 调用 context.system.shutdown 之后结束 // terminating or terminated 就不能再创建 actor 了
     system.shutdown()
+}
+
+object EventApp extends App {
+    val actorSystem = ActorSystem("EventSystem")
+    val engine = actorSystem.actorOf(Props[Engine], "engineActor")
+    engine ! EventProtocol.Init
+
+	actorSystem.awaitTermination()   // 会等某一个 actor 调用 context.system.shutdown 之后结束 // terminating or terminated 就不能再创建 actor 了
+    actorSystem.shutdown()
 }
 
 import akka.actor.DeadLetter
