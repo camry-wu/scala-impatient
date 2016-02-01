@@ -189,6 +189,8 @@ class Sink extends Actor with ActorLogging {
 // 5. 消息通道
 // 似乎在 akka 中没有 Channel 概念了，应该是用 EventBus 来处理消息总线
 // 可参考 http://www.tuicool.com/articles/NzMb6vr
+// 参考后发现 EventBus 是处理消息订阅和发布的，与原本的 channel 不同
+// 似乎用 AtLeastOnceDelivery 替换原来的 channel，但为何是 persistence 包中？仅与持久化相关吗？
 
 // 6. 同步消息和 Future
 // 参考 akka.dispatch.Futures
