@@ -146,6 +146,17 @@ trait BoldStyle extends HtmlStyle {
 }
 
 // 8.
+/*
+关于自身类型的名称写法
+All three forms are valid, and have the effect that B is assumed as the type of this in class A. The variants
+
+trait A { self: B => ... }
+trait A { foo: B => ... }
+introduce self (respectively, foo) as an alias for this in trait A. This is useful for accessing the this reference from an inner class. I.e. you could then use self instead of A.this when accessing the this reference of the trait A from a class nested within it. The third variant,
+
+trait A { this: B => ... }
+does not introduce an alias for this; it just sets the self type.
+*/
 import java.io.File
 import java.io.FileInputStream
 import java.io.InputStream
