@@ -194,6 +194,8 @@ class Sink extends Actor with ActorLogging {
 
 // 6. 同步消息和 Future
 // 参考 akka.dispatch.Futures
+import scala.concurrent.Await
+import scala.concurrent.Future
 
 // 7. 共享线程
 // 好像 akka 中没有 react 方法了，akka 本身就是异步事件驱动的，不是通过 while 循环来处理 receive 方法的
@@ -526,6 +528,7 @@ object CourseTest extends App {
 
     // 6.
     // println("------------------------------  section 6 -------------------------");
+    // see FutureApp
 
     // 7.
     // println("------------------------------  section 7 -------------------------");
@@ -570,6 +573,19 @@ object EventApp extends App {
 
 	actorSystem.awaitTermination()   // 会等某一个 actor 调用 context.system.shutdown 之后结束 // terminating or terminated 就不能再创建 actor 了
     actorSystem.shutdown()
+}
+
+import scala.concurrent.ExecutionContext.Implicits.global
+object FutureApp extends App {
+
+    val s = "Hello"
+    val future = Future {
+        s + " World"
+    }
+
+    future onComplete {
+        case msg => println(msg)
+    }
 }
 
 import akka.actor.DeadLetter
