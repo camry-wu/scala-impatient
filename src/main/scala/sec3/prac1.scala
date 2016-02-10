@@ -1,4 +1,5 @@
 package sec3
+// 数组相关操作
 
 class Prac1 {
 }

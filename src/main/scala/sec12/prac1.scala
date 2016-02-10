@@ -1,4 +1,5 @@
 package sec12
+// 高阶函数
 
 // 1.
 import scala.collection.mutable.ArrayBuffer

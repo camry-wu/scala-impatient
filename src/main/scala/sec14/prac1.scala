@@ -1,4 +1,5 @@
 package sec14
+// 模式匹配和样例类
 
 // 1.
 import scala.io.Source

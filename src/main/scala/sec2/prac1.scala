@@ -1,4 +1,5 @@
 package sec2
+// 控制结构和函数
 
 class Prac1 {
 }

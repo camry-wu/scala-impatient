@@ -1,5 +1,6 @@
 package sec20
 package course
+// Actor
 // 注意，scala.2.10 版后改为 akka 的 actor 库， 这里使用 akka actor 库
 // 学习系列文章：   http://rerun.me/2014/09/19/akka-notes-actor-messaging-1/
 // http://it.deepinmind.com/akka/2014/10/22/akka-notes-logging-and-testing.html
@@ -196,6 +197,17 @@ class Sink extends Actor with ActorLogging {
 // 参考 akka.dispatch.Futures
 import scala.concurrent.Await
 import scala.concurrent.Future
+import akka.pattern.ask
+import akka.util.Timeout
+
+class BlobHandler extends Actor with ActorLogging {
+    def receive = {
+        case msg: String => {
+            log.info(s"handle [$msg]")
+            sender() ! "hello!"
+        }
+    }
+}
 
 // 7. 共享线程
 // 好像 akka 中没有 react 方法了，akka 本身就是异步事件驱动的，不是通过 while 循环来处理 receive 方法的
@@ -576,16 +588,38 @@ object EventApp extends App {
 }
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.{Success, Failure}
 object FutureApp extends App {
+    implicit val timeout = Timeout(5 seconds)
 
-    val s = "Hello"
-    val future = Future {
-        s + " World"
-    }
+    val actorSystem = ActorSystem("FutureSystem")
+    val blobHandler = actorSystem.actorOf(Props[BlobHandler], "blobHandler")
 
+    // 
+    // cause the current thread to block and wait for the result
+    //
+    /*
+    val future = blobHandler ? "msg" // enabled by the "ask" import
+    val result = Await.result(future, timeout.duration).asInstanceOf[String]
+    println (result)
+    */
+    /*
+    val future: Future[String] = ask(blobHandler, "msg").mapTo[String]
+    val result = Await.result(future, timeout.duration).asInstanceOf[String]
+    println (result)
+    */
+
+    //
+    // callback
+    //
+    val future: Future[String] = ask(blobHandler, "msg").mapTo[String]
     future onComplete {
-        case msg => println(msg)
+        case Success(result) => println(s"Success: $result")
+        case Failure(result) => println(s"Failure: $result")
     }
+
+    Thread.sleep(1000)
+    actorSystem.shutdown()
 }
 
 import akka.actor.DeadLetter

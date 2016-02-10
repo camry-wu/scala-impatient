@@ -1,5 +1,6 @@
 package sec18
 package course
+// 高级类型
 
 // 1.
 object Title

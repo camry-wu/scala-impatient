@@ -1,4 +1,5 @@
 package sec10
+// 特质
 
 // 1.
 trait RectangleLike {

@@ -1,4 +1,5 @@
 package sec17
+// 类型参数
 
 // 1.
 class Pair[T, S] (val t: T, val s: S) {

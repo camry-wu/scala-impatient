@@ -1,4 +1,5 @@
 package sec8
+// 继承
 
 // 1.
 class BankAccount(initialBalance: Double) {

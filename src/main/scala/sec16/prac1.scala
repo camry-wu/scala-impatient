@@ -1,4 +1,5 @@
 package sec16
+// XML处理
 
 import scala.xml._
 

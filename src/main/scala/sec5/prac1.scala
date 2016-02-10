@@ -1,4 +1,5 @@
 package sec5
+// 类
 
 // 1.
 class Counter {

@@ -1,33 +1,26 @@
 package sec21
 package course
+// 隐式转换和隐式参数
 
-// 1.
+// 1. 隐式转换
 
-// 2.
+// 2. 利用隐式转换丰富现有类库的功能
 
-// 3.
+// 3. 引入隐式转换
 
-// 4.
+// 4. 隐式转换规则
 
-// 5.
+// 5. 隐式参数
 
-// 6.
+// 6. 利用隐式参数进行隐式转换
 
-// 7.
+// 7. 上下文界定
 
-// 8.
+// 8. 类型证明
 
-// 9.
+// 9. @implicitNotFound 注解
 
-// 10.
-
-// 11.
-
-// 12.
-
-// 13.
-
-// 14.
+// 10. CanBuildFrom 解读
 
 object CourseTest extends App {
     println ("sec21.course.CourseTest")

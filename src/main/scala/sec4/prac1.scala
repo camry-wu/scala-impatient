@@ -1,4 +1,5 @@
 package sec4
+// 映射和元组
 
 class Prac1 {
 }
