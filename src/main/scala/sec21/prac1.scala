@@ -5,6 +5,7 @@ package sec21
 object Utils {
     // 隐式类要放在 object 里头
     implicit final class CamryAssoc[A](private val self: A) extends AnyVal {
+        // 内联注解可以让方法调用语句替换为被调用的方法体
         @inline def camry[B](y: B): Tuple2[A, B] = Tuple2(self, y)
     }
 }
@@ -37,6 +38,8 @@ object MyRichInt {
 // 3.
 
 // 4.
+import java.lang.System
+import scala.io.StdIn
 
 // 5.
 
@@ -106,8 +109,7 @@ object PracTest extends App {
 
     // 4.
     println("------------------------------  practice 4 -------------------------");
-    import java.lang.System
-    import scala.io.StdIn
+    /*
     val username: String = System.getProperty("user.name")
     println(username + ", Please input your password: ")
     val pass: String = StdIn.readLine()
@@ -116,6 +118,15 @@ object PracTest extends App {
     } else {
         Console.err.println("Sorry, username and password unmatched!")
     }
+    */
+
+    // Read in aString askingFor "Your name" and anInt askingFor "Your age" and aDouble askingFor "Your weight"
+    // println("name   = " + aString)
+    // println("age    = " + anInt)
+    // println("weight = " + aDouble)
+
+    // 翻译过来就是
+    // Read.in(aString).askingFor("Your name").and(anInt).askingFor("Your age").and(aDouble).askingFor("Your weight")
 
     // 5.
     println("------------------------------  practice 5 -------------------------");
@@ -180,17 +191,78 @@ object PracTest extends App {
      implicit def tpEquals[A]: A =:= A = singleton_=:=.asInstanceOf[A =:= A]
   }
 */
+    // 这是一种类型证明，可以证明 A 和 B 是相等的
+    // 在 Predef 中有一个 =:= 的类定义，并有一个私有成员实现这个类，提供了 apply 方法
+    // 当需要证明 A 即是 B 时，就可以找到这个隐式转换，将 A 转成 B
+    // 这样，在 A 对象上调用 B 的方法的时候，就不会报编译的错误了
 
     // 10.
     println("------------------------------  practice 10 -------------------------");
-    // String 没有 map 函数，但 StringOps 有，
-    // Predef.scala 中有定义一个隐式转换将 String 转为 StringOps
-    // @inline implicit def augmentString(x: String): StringOps = new StringOps(x)
-    // StringOps.map 的定义为：def map[B](f: (A) => B): String[B]
     
     // 而 toUpper 方法是 Char 的方法
     println("abc".map(_.toUpper))       // print: ABC
 
     // 而 toInt 方法是 Char 的方法
     println("abc".map(_.toInt))         // print: Vector(97, 98, 99)
+
+    // scalac -Xprint:typer a.scala 
+    // 得到如下输出：
+    /*
+        [[syntax trees at end of                     typer]] // a.scala
+        package classes {
+          object A extends AnyRef with App {
+            def <init>(): classes.A.type = {
+              A.super.<init>();
+              ()
+            };
+            scala.this.Predef.println(scala.this.Predef.augmentString("Hello World!").map[Char, Any](((x$1: Char) => scala.this.Predef.charWrapper(x$1).toUpper))(scala.this.Predef.StringCanBuildFrom));
+            scala.this.Predef.println(scala.this.Predef.augmentString("Hello World!").map[Int, Any](((x$2: Char) => x$2.toInt))(scala.this.Predef.fallbackStringCanBuildFrom[Int]))
+          }
+        }
+    */
+
+    // 解释：
+    // String 没有 map 函数，但 StringOps 有，
+    // Predef.scala 中有定义一个隐式转换将 String 转为 StringOps
+    // @inline implicit def augmentString(x: String): StringOps = new StringOps(x)
+    // StringOps.map 的定义为：def map[B](f: (A) => B): String[B]
+
+    // 由于这个 map 方法涉及两种类型，一是展现类型 String，一个是成员类型 Char
+    // 实际上，调用的 map 定义是在 FilterMonadic[+A, +Repr] 里头：
+    //  abstract def map[B, That](f: (A) => B)(implicit bf: CanBuildFrom[Repr, B, That]): That
+
+    // 在 TraversableLike[+A, +Repr] 里头实现的：
+    /*
+        def map[B, That](f: A => B)(implicit bf: CanBuildFrom[Repr, B, That]): That = {
+            def builder = { // extracted to keep method size under 35 bytes, so that it can be JIT-inlined
+              val b = bf(repr)      // 得到一个 Builder[B, That] 对象
+              b.sizeHint(this)
+              b
+            }
+            val b = builder
+            for (x <- this) b += f(x)  // 对每个成员调用 f 函数得到一个结果合并到 Builder 中
+            b.result                // 得到 That 对象的结果
+        }
+    */
+
+    // toUpper 的情况：
+    // ----------------
+    // f: A => B 即为：((x$1: Char) => scala.this.Predef.charWrapper(x$1).toUpper)
+    // 其中 Char 被隐式转换 charWrapper 转成了 RichChar，f 函数的结果仍然是一个 Char
+
+    // bf 是一个隐式参数，要求 CanBuildFrom[Repr, B, That] 中的 B 是 Char
+    // 在 Predef 中可以找到对应的隐式值
+    //  implicit val StringCanBuildFrom: CanBuildFrom[String, Char, String] 
+    //      apply 方法得到一个 StringBuilder
+
+    // 最终的 StringBuilder.result 方法返回一个 String
+
+    // toInt 的情况:
+    // ----------------
+    // f: ((x$2: Char) => x$2.toInt)，f 函数的结果是一个 Int
+    // 此时，要求 CanBuildFrom[Repr, B, That] 中的 B 是个 Int, Repr 仍然是个 String
+    // 于是在 Predef 中找到另外一个隐式值：
+    // implicit def fallbackStringCanBuildFrom[T]: CanBuildFrom[String, T, immutable.IndexedSeq[T]]
+    //      apply 方法得到一个 immutable.IndexedSeq.newBuilder[T] = Vector.newBuilder[A] = new VectorBuilder[A]
+    // 而 VectorBuilder 的 result 方法返回一个 Vector
 }
