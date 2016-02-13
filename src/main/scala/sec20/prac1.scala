@@ -1,7 +1,22 @@
 package sec20
 // Actor
 
+import akka.actor.{Actor, ActorLogging, Props, ActorRef, ActorSystem}
+
 // 1.
+class AvgActor extends Actor with ActorLogging {
+	//val workerActor = context.actorOf(AvgWorkerActor.props, "avgWorkerActor")
+    def receive = {
+        case x: Int => {}
+        case AvgActor.Eof => {}
+        case _ => {}
+    }
+}
+
+object AvgActor {
+    val props = Props[AvgActor]
+    case object Eof
+}
 
 // 2.
 
