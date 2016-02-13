@@ -40,6 +40,105 @@ object MyRichInt {
 // 4.
 import java.lang.System
 import scala.io.StdIn
+    /*
+    val username: String = System.getProperty("user.name")
+    println(username + ", Please input your password: ")
+    val pass: String = StdIn.readLine()
+    if ("secret".equals(pass)) {
+        Console.out.println("Welcome " + username + "!")
+    } else {
+        Console.err.println("Sorry, username and password unmatched!")
+    }
+    */
+object DataTypeEnum extends Enumeration {
+    val aString, anInt, aDouble = Value
+}
+class Data[T](val dtype: DataTypeEnum.Value, val label: String) {
+    var value = None: Option[T]
+    override def toString = "%-12s[%8s]: %s".format(label, dtype, value.toString)
+}
+object Data {
+    def apply[T](dtype: DataTypeEnum.Value, label: String): Data[T] = new Data[T](dtype, label)
+}
+class WrapString(val value: String) {
+    override def toString = value
+}
+object WrapString {
+    def apply(v: String) = new WrapString(v)
+
+    // 由于已经有对 String 做隐式转换的 Predef.augmentString，再次对 String 做隐式转换
+    // 会让编译器报错，因此做了一个包装
+    implicit def warpStr2Str(from: WrapString): String = from.value
+
+    // 如果输入的数据格式不正确，会抛出异常，可以进一步处理掉，这里没有做
+    implicit def warpStr2Int(from: WrapString): Int = from.value.toInt
+    implicit def warpStr2Double(from: WrapString): Double = from.value.toDouble
+}
+
+import scala.collection._
+class Read {
+    var currentInputType: DataTypeEnum.Value = null
+    val inputDataArray = new mutable.ArrayBuffer[Any]()
+
+    def and(inputType: DataTypeEnum.Value): this.type = {
+        currentInputType = inputType
+        this
+    }
+
+    def askingFor(label: String): this.type = {
+        println(label)
+
+        val inputStr: String = StdIn.readLine()
+
+        addData(currentInputType, label, inputStr)
+
+        this
+    }
+
+    private def addData(inputType: DataTypeEnum.Value, label: String, value: String) {
+        // 设置 inputData.value 时会自动根据类型调用隐式转换
+        val v = new WrapString(value)
+        inputType match {
+            case DataTypeEnum.aString   => {
+                val inputData = Data[String](inputType, label)
+                inputData.value = Some(v)
+                inputDataArray += inputData
+            }
+            case DataTypeEnum.anInt     => {
+                val inputData = Data[Int](inputType, label)
+                inputData.value = Some(v)
+                inputDataArray += inputData
+            }
+            case DataTypeEnum.aDouble   => {
+                val inputData = Data[Double](inputType, label)
+                inputData.value = Some(v)
+                inputDataArray += inputData
+            }
+            case _ => {
+                val inputData = Data[Any](inputType, label)
+                inputData.value = Some(v)
+                inputDataArray += inputData
+            }
+        }
+    }
+
+    override def toString = {
+        println(inputDataArray.size)
+        val result = new mutable.StringBuilder()
+        inputDataArray.foreach {
+            x => result ++= x.toString += '\n'
+        }
+        result.result
+    }
+}
+
+object Read {
+    def in(inputType: DataTypeEnum.Value): Read = {
+        val result = new Read()
+        result.and(inputType)
+        result
+    }
+}
 
 // 5.
 
@@ -109,24 +208,16 @@ object PracTest extends App {
 
     // 4.
     println("------------------------------  practice 4 -------------------------");
-    /*
-    val username: String = System.getProperty("user.name")
-    println(username + ", Please input your password: ")
-    val pass: String = StdIn.readLine()
-    if ("secret".equals(pass)) {
-        Console.out.println("Welcome " + username + "!")
-    } else {
-        Console.err.println("Sorry, username and password unmatched!")
-    }
-    */
 
-    // Read in aString askingFor "Your name" and anInt askingFor "Your age" and aDouble askingFor "Your weight"
-    // println("name   = " + aString)
-    // println("age    = " + anInt)
-    // println("weight = " + aDouble)
+    import DataTypeEnum._
+
+    val read = Read in aString askingFor "Your name" and anInt askingFor "Your age" and aDouble askingFor "Your weight"
 
     // 翻译过来就是
-    // Read.in(aString).askingFor("Your name").and(anInt).askingFor("Your age").and(aDouble).askingFor("Your weight")
+    // 但怎么利用上隐式转换或隐式参数呢？
+    // val read = Read.in(aString).askingFor("Your name").and(anInt).askingFor("Your age").and(aDouble).askingFor("Your weight")
+
+    println(read)
 
     // 5.
     println("------------------------------  practice 5 -------------------------");
