@@ -7,12 +7,32 @@ import scala.collection._
 // 1.
 class AvgActor extends Actor with ActorLogging {
 
+    private var sum: Int = 0
+    private var account: Int = 0
+    private var index: Int = -1
+	private var signal: Int = AvgActor.WORKER_NUM
 	val workerActors = init()
 
     def receive = {
-        case x: Int => {}
-        case AvgActor.Eof => {}
-        case AvgActor.Sum(sum) => {}
+        case x: Int => {
+			account += 1
+			index += 1
+			if (index >= AvgActor.WORKER_NUM) index = 0
+			workerActors(index) ! x
+		}
+        case AvgActor.Eof => {
+			workerActors.foreach(_ ! AvgActor.Eof)
+		}
+        case AvgActor.Sum(x) => {
+			sum += x
+			signal -= 1
+			if (signal <= 0) {
+				// finish
+				val avg = sum / account
+				log.info(s"receive $account Int, avg is: $avg !")
+				context.system.shutdown
+			}
+		}
     }
 
     private def init(): mutable.ArrayBuffer[ActorRef] = {
@@ -24,7 +44,7 @@ class AvgActor extends Actor with ActorLogging {
 }
 
 object AvgActor {
-    val WORKER_NUM = 20
+    val WORKER_NUM = 4
     val props = Props[AvgActor]
     case object Eof
     case class Sum(sum: Int)
@@ -38,8 +58,12 @@ class AvgWorkerActor extends Actor with ActorLogging {
     // 在此处生成随机数并加到总数中
     // 完成后把总数发回去
     def receive = {
-        case x: Int => { sum += Random.nextInt(x) }
-        case AvgActor.Eof => { sender ! AvgActor.Sum(sum) }
+        case x: Int => {
+			sum += Random.nextInt(x)
+		}
+        case AvgActor.Eof => { 
+			sender ! AvgActor.Sum(sum)
+		}
     }
 }
 
@@ -64,11 +88,17 @@ class AvgWorkerActor extends Actor with ActorLogging {
 object PracTest1 extends App {
     // 1.
     println("------------------------------  practice 1 -------------------------");
+	val begin = System.currentTimeMillis
     val actorSystem = ActorSystem("AvgSystem")
     val actor = actorSystem.actorOf(AvgActor.props)
 
-    Thread.sleep(1000)      // 等一会
+	for (i <- 1 to 1000000) actor ! i
+	actor ! AvgActor.Eof
+
+    actorSystem.awaitTermination()
     actorSystem.shutdown()
+	val end = System.currentTimeMillis
+	println("use time: " + (end - begin))
 }
 
 object PracTest2 extends App {
