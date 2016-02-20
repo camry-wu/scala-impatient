@@ -44,7 +44,7 @@ class AvgActor extends Actor with ActorLogging {
 }
 
 object AvgActor {
-    val WORKER_NUM = 4
+    val WORKER_NUM = 10000
     val props = Props[AvgActor]
     case object Eof
     case class Sum(sum: Int)
@@ -59,7 +59,9 @@ class AvgWorkerActor extends Actor with ActorLogging {
     // 完成后把总数发回去
     def receive = {
         case x: Int => {
-			sum += Random.nextInt(x)
+            val y = Random.nextInt(x)
+			sum += y
+            //log.info(s"$y")
 		}
         case AvgActor.Eof => { 
 			sender ! AvgActor.Sum(sum)
@@ -92,13 +94,20 @@ object PracTest1 extends App {
     val actorSystem = ActorSystem("AvgSystem")
     val actor = actorSystem.actorOf(AvgActor.props)
 
-	for (i <- 1 to 1000000) actor ! i
+	val beginRun = System.currentTimeMillis
+	for (i <- 1 to 10000000) actor ! i
 	actor ! AvgActor.Eof
 
     actorSystem.awaitTermination()
+
+	val endRun = System.currentTimeMillis
+
     actorSystem.shutdown()
 	val end = System.currentTimeMillis
-	println("use time: " + (end - begin))
+	println("init  time: " + (beginRun - begin))
+	println("run   time: " + (endRun - beginRun))
+	println("close time: " + (end - endRun))
+	println("full  time: " + (end - begin))
 }
 
 object PracTest2 extends App {
