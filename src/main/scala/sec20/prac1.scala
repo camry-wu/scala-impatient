@@ -82,20 +82,128 @@ class AvgWorkerActor extends Actor with ActorLogging {
 }
 
 // 2.
+import java.awt.Rectangle
+import java.awt.image.{BufferedImage, Raster}
+import java.io.File
+import javax.imageio.ImageIO
+class ImgActor extends Actor with ActorLogging {
+    var inImage: BufferedImage = null
+    var outImage: BufferedImage = null
+
+	private var signal: Int = ImgActor.WORKER_NUM
+	val workerActors = init()
+
+    def receive = {
+        case ImgActor.Init => {
+            inImage = ImageIO.read(new File("src/main/scala/sec20/prac2.jpg"))
+
+            val height = inImage.getHeight
+            val width = inImage.getWidth
+            val x = inImage.getMinX
+            var y = inImage.getMinY
+            log.info(s"Height: $height, Width: $width, x.point: $x, y.point: $y")
+
+            outImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
+
+            val allocateHeight = ImgActor.allocate(height)
+
+            for (i <- 0 to (ImgActor.WORKER_NUM - 1)) {
+                try {
+                    workerActors(i) ! ImgActor.PartRaster(inImage.getData(new Rectangle(x, y, width, allocateHeight(i))))
+                    y = y + allocateHeight(i)
+                } catch {
+                    case x: Exception => { x.printStackTrace() }
+                }
+            }
+        }
+        case ImgActor.PartRaster(part) => {
+            log.info("complete part...")
+            outImage.setData(part)
+			signal -= 1
+			if (signal <= 0) {
+				// finish
+                // write to outImage
+                log.info("FINISH!")
+                ImageIO.write(outImage, "jpeg", new File("src/main/scala/sec20/prac2.reverse.jpg")) 
+				context.system.shutdown
+			}
+        }
+    }
+
+    private def init(): mutable.ArrayBuffer[ActorRef] = {
+        val result = mutable.ArrayBuffer[ActorRef]()
+        for (i <- 1 to ImgActor.WORKER_NUM) result += context.actorOf(Props[ImgWorkerActor], "imgWorkerActor" + i)
+        result
+    }
+}
+
+object ImgActor {
+    val WORKER_NUM = 4
+    val props = Props[ImgActor]
+    case object Init
+    case class PartRaster(part: Raster)
+
+    def allocate(n: Int): mutable.ArrayBuffer[Int] = {
+        val result = mutable.ArrayBuffer[Int]()
+        val low = n / WORKER_NUM
+        val high = low + 1
+        val remainder = n % WORKER_NUM
+
+        for (i <- 0 to remainder - 1) result += high
+        for (i <- remainder to WORKER_NUM - 1) result += low
+
+        result
+    }
+}
+
+class ImgWorkerActor extends Actor with ActorLogging {
+    def receive = {
+        case ImgActor.PartRaster(part) => {
+            log.info("receive part...")
+            // 本应将收到的矩形区域反色，这里直接输出
+            sender ! ImgActor.PartRaster(part)
+        }
+    }
+}
 
 // 3.
+// 3, 4, 5, 7, 9 的习题内容相靠，一起设计处理
+
+// 遍历给定的目录，将文件交给一个 actor 处理
+class FolderVisitActor extends Actor with ActorLogging {
+    def receive = {
+        case _ => {}
+    }
+}
+
+// 处理文件，将结果报告给结果处理器
+class FileHandlerActor extends Actor with ActorLogging {
+    def receive = {
+        case _ => {}
+    }
+}
+
+// 结果处理器，汇总结果并打印显示
+class GrepResultActor extends Actor with ActorLogging {
+    def receive = {
+        case _ => {}
+    }
+}
 
 // 4.
 
 // 5.
 
 // 6.
+// akka actor 不是用循环处理的，此题不做
 
 // 7.
 
 // 8.
+// 死锁演示
 
 // 9.
+// 一个有问题的 handler actor
 
 // 10.
 
@@ -125,6 +233,23 @@ object PracTest1 extends App {
 object PracTest2 extends App {
     // 2.
     println("------------------------------  practice 2 -------------------------");
+	val begin = System.currentTimeMillis
+    val actorSystem = ActorSystem("ImgSystem")
+    val actor = actorSystem.actorOf(ImgActor.props)
+
+	val beginRun = System.currentTimeMillis
+	actor ! ImgActor.Init
+
+    actorSystem.awaitTermination()
+
+	val endRun = System.currentTimeMillis
+
+    actorSystem.shutdown()
+	val end = System.currentTimeMillis
+	println("init  time: " + (beginRun - begin))
+	println("run   time: " + (endRun - beginRun))
+	println("close time: " + (end - endRun))
+	println("full  time: " + (end - begin))
 }
 
 object PracTest3 extends App {
