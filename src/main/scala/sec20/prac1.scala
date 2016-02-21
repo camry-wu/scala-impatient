@@ -4,6 +4,16 @@ package sec20
 import akka.actor.{Actor, ActorLogging, Props, ActorRef, ActorSystem}
 import scala.collection._
 
+package object utils {
+    def sleepNono(period: Long) {
+        val beg = System.nanoTime
+        var end = beg
+        while (end - beg <= period) {
+            end = System.nanoTime
+        }
+    }
+}
+
 // 1.
 class AvgActor extends Actor with ActorLogging {
 
@@ -44,7 +54,8 @@ class AvgActor extends Actor with ActorLogging {
 }
 
 object AvgActor {
-    val WORKER_NUM = 10000
+    // 4 核的情况下，数量是 4, 8, 还是 100 似乎差别不大
+    val WORKER_NUM = 100
     val props = Props[AvgActor]
     case object Eof
     case class Sum(sum: Int)
@@ -61,6 +72,7 @@ class AvgWorkerActor extends Actor with ActorLogging {
         case x: Int => {
             val y = Random.nextInt(x)
 			sum += y
+            utils.sleepNono(40000)      // 控制每个 cpu 每秒可处理 25000 条
             //log.info(s"$y")
 		}
         case AvgActor.Eof => { 
@@ -95,7 +107,7 @@ object PracTest1 extends App {
     val actor = actorSystem.actorOf(AvgActor.props)
 
 	val beginRun = System.currentTimeMillis
-	for (i <- 1 to 10000000) actor ! i
+	for (i <- 1 to 200000) actor ! i
 	actor ! AvgActor.Eof
 
     actorSystem.awaitTermination()
