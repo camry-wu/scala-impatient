@@ -168,12 +168,60 @@ class ImgWorkerActor extends Actor with ActorLogging {
 
 // 3.
 // 3, 4, 5, 7, 9 的习题内容相靠，一起设计处理
+import scala.io.Source
+import java.io.File
+/*
+class FallsToTheNextCase(path: String) {
+    def subdirs(dir: File): Iterator[File] = {
+        val children = dir.listFiles.filter(_.isDirectory)
+        children.toIterator ++ children.toIterator.flatMap(subdirs _)
+    }
+
+    def findCaseAndFallsThruCount(filename: String): Tuple2[Int, Int] = {
+        val source = Source.fromFile(filename)
+        val content = source.mkString
+        val pat1 = """case[^:]+:""".r
+        val pat2 = """[Ff]alls?thr""".r
+
+        val caseCount = pat1.findAllIn(content).toList.size
+        val fallsCount = pat2.findAllIn(content).toList.size
+        source.close
+
+        (caseCount, fallsCount)
+    }
+
+    def calFallsPersent(): Double = {
+        var countArray = Array[Tuple2[Int, Int]]()
+        for (d <- subdirs(new File(path))) {
+            val files = d.listFiles.filter(!_.isDirectory).toIterator
+            for(f <- files if f.getName.endsWith(".java")) {
+                countArray = countArray :+ findCaseAndFallsThruCount(f.getCanonicalPath)
+            }
+        }
+        val caseSum = countArray.map(_._1).sum
+        val fallsSum = countArray.map(_._2).sum
+        println("case count in java source: " + caseSum)
+        println("fall count in java source: " + fallsSum)
+
+        val result = (fallsSum * 100.0F)/ caseSum
+        result
+    }
+}
+*/
 
 // 遍历给定的目录，将文件交给一个 actor 处理
 class FolderVisitActor extends Actor with ActorLogging {
     def receive = {
-        case _ => {}
+        case FolderVisitActor.Folder(x) => {
+			log.info(x)
+			context.system.shutdown
+		}
     }
+}
+
+object FolderVisitActor {
+    val props = Props[FolderVisitActor]
+    case class Folder(path: String)
 }
 
 // 处理文件，将结果报告给结果处理器
@@ -255,6 +303,23 @@ object PracTest2 extends App {
 object PracTest3 extends App {
     // 3.
     println("------------------------------  practice 3 -------------------------");
+	val begin = System.currentTimeMillis
+    val actorSystem = ActorSystem("FolderVisitSystem")
+    val actor = actorSystem.actorOf(FolderVisitActor.props)
+
+	val beginRun = System.currentTimeMillis
+	actor ! FolderVisitActor.Folder("src/main/scala")
+
+    actorSystem.awaitTermination()
+
+	val endRun = System.currentTimeMillis
+
+    actorSystem.shutdown()
+	val end = System.currentTimeMillis
+	println("init  time: " + (beginRun - begin))
+	println("run   time: " + (endRun - beginRun))
+	println("close time: " + (end - endRun))
+	println("full  time: " + (end - begin))
 }
 
 object PracTest4 extends App {
